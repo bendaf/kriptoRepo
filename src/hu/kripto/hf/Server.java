@@ -1,6 +1,5 @@
 package hu.kripto.hf;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -8,6 +7,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
 
@@ -75,45 +75,61 @@ public class Server implements Runnable {
 						Element eElement = (Element) node;
 						if(eElement.getNodeName().equals("step")){
 							step = Integer.parseInt(eElement.getTextContent());
+//							System.out.println(Integer.toString(step));
 						}else if (eElement.getNodeName().equals("modulus")) {
 							modulus = Integer.parseInt(eElement.getTextContent());
 						}
 					}
 				}
-				switch (step) {
-				case 1:
+				if(step == 1){
 					try {
-						dh = new DH(2, modulus);
-						byte[] secondStep = secondStep(Long.toHexString(
-						dh.createInterKey()));
+						int modIndex = indexOfModulus(modulus);
+						dh = new DH(2, generateLong(CONSTANTS.MOD_STRINGS[modIndex]));
+						byte[] secondStep = secondStep(Long.toHexString(dh.createInterKey()));
+						System.out.println(Long.toString(dh.getValue(4)));
 						clientOutput.writeInt(secondStep.length);
 						clientOutput.write(secondStep);
 						clientOutput.flush();
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
-					break;
-
-				case 3:
-					
-					break;
-				default:
-					break;
 				}
-				
 				
 			} catch (ParserConfigurationException | SAXException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-			
-//			clientOutput.writeInt(array.length);
-//			clientOutput.write(array);
-//			clientOutput.flush();
 
-
-			// CLEANUP
-			// Sose felejtsetek el lezarni! Magatoknak okoztok vele fejfajast.
+			byte[] b2 = new byte[clientInput.readInt()];
+			clientInput.read(b2);
+			try {
+				Document d = obtenerDocumentDeByte(b2);
+				d.getDocumentElement().normalize();
+				
+				NodeList nList = d.getElementsByTagName("dh");
+				Node nNode = nList.item(0);
+				NodeList ghChildren = nNode.getChildNodes();
+				int step = -1;
+				for (int temp = 0; temp < ghChildren.getLength(); temp++) {
+					 
+					Node node = ghChildren.item(temp);
+			 
+					if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+						node.getChildNodes();
+						Element eElement = (Element) node;
+						if(eElement.getNodeName().equals("step")){
+							step = Integer.parseInt(eElement.getTextContent());
+//							System.out.println(Integer.toString(step));
+						}else if (eElement.getNodeName().equals("modulus")) {
+							modulus = Integer.parseInt(eElement.getTextContent());
+						}
+					}
+				}
+				
+			} catch (ParserConfigurationException | SAXException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			clientSocket.close();
 		} catch (IOException e) {
 			e.printStackTrace(); // Eleg sok helyen elszallhat a kapcsolat, erdemes a java doksit egyszer vegigolvasni, hogy mennyi problema lephet fel halozati kommunikacio soran.
@@ -124,6 +140,21 @@ public class Server implements Runnable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private long generateLong(String string) {
+		return Long.parseLong(string);
+	}
+
+	private Integer indexOfModulus(int modulus2) {
+		int index = 0;
+		for(Integer i : CONSTANTS.MOD_NUMS){
+			if(i.equals(modulus2)){
+				return index;
+			}
+			index++;
+		}
+		return null;
 	}
 
 	private byte[] secondStep(String hexString) {

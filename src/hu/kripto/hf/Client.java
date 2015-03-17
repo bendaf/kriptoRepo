@@ -9,7 +9,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException; // Ha a kommunikacioban valami balul sul el
-import java.io.PrintWriter;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException; // Ha rossz cimre probalunk csatlakozni
@@ -33,13 +32,13 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
-public class PingClient implements Runnable {
+public class Client implements Runnable {
 	protected Socket clientSocket;
 	private Integer myModulus;
 	private long myResult;
 	private DH dh;
 	
-	public PingClient() throws UnknownHostException, IOException {
+	public Client() throws UnknownHostException, IOException {
 		clientSocket = new Socket(InetAddress.getLocalHost(), Server.PORT_NUMBER);
 	}
 
@@ -82,14 +81,15 @@ public class PingClient implements Runnable {
 							step = Integer.parseInt(eElement.getTextContent());
 						}else if (eElement.getNodeName().equals("myresult")) {
 							myResult = Long.parseLong(eElement.getTextContent());
+//							System.out.println(Long.toString(myResult));
 						}
 					}
 				}
 				if(step == 2){
 					try {
 						dh = new DH(2, myModulus);
-						byte[] thirdStep = thirdStep(Long.toHexString(
-						dh.createInterKey()));
+						byte[] thirdStep = thirdStep(Long.toHexString(dh.createInterKey()));
+						
 						serverOutput.writeInt(thirdStep.length);
 						serverOutput.write(thirdStep);
 						serverOutput.flush();
@@ -168,7 +168,7 @@ public class PingClient implements Runnable {
 
 	public static void main(String[] args) {
 		try {
-			new PingClient().run();
+			new Client().run();
 		} catch (IOException e) { // Az UnknownHostException az IOException leszarmazottja. Mivel most egyikre se tudnank ertelmes hibakezelest csinalni, egyszerre lekezeljuk mindkettot.
 			e.printStackTrace();
 		}
