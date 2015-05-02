@@ -32,7 +32,7 @@ import org.xml.sax.SAXException;
 public class Server implements Runnable {
 	public static final int PORT_NUMBER = 42424;
 	private int modulus;
-	private DH dh;
+	private DifHelm dh;
 
 	public Server() throws IOException {
 		serverSocket = new ServerSocket(PORT_NUMBER);
@@ -84,9 +84,10 @@ public class Server implements Runnable {
 				if(step == 1){
 					try {
 						int modIndex = indexOfModulus(modulus);
-						dh = new DH(2, generateLong(CONSTANTS.MOD_STRINGS[modIndex]));
-						byte[] secondStep = secondStep(Long.toHexString(dh.createInterKey()));
-						System.out.println(Long.toString(dh.getValue(4)));
+						dh = new DifHelm(new BigInteger("2"),
+										new BigInteger(CONSTANTS.MOD_STRINGS[modIndex],16));
+						byte[] secondStep = secondStep(dh.createInterKey().toString(16));
+						System.out.println(dh.getValue(4));
 						clientOutput.writeInt(secondStep.length);
 						clientOutput.write(secondStep);
 						clientOutput.flush();
@@ -141,11 +142,7 @@ public class Server implements Runnable {
 			e.printStackTrace();
 		}
 	}
-
-	private long generateLong(String string) {
-		return Long.parseLong(string);
-	}
-
+	
 	private Integer indexOfModulus(int modulus2) {
 		int index = 0;
 		for(Integer i : CONSTANTS.MOD_NUMS){

@@ -9,7 +9,7 @@ public class DH {
     private long key;
     private long maxNum;
 
-    private static final int DH_MAX_BITS = 31;
+    private static final int DH_MAX_BITS = 8193;
     private static final int DH_RANGE = 100;
 
     private static final int DH_MOD  = 1;
