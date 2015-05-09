@@ -1,6 +1,11 @@
 package hu.kripto.hf;
 
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.math.BigInteger;
+import java.util.HashMap;
 import java.util.Random;
 
 public class DifHelm {
@@ -9,24 +14,56 @@ public class DifHelm {
 	private BigInteger mod;
 	private BigInteger priv;
 	private BigInteger pub;
+	private BigInteger key;
 	
-    private static final int DH_MOD  = 1;
-    private static final int DH_GEN  = 2;
-    private static final int DH_PRIV = 3;
-    private static final int DH_PUB  = 4;
-    private static final int DH_KEY  = 5;
+    public static final int DH_MOD  = 1;
+    public static final int DH_GEN  = 2;
+    public static final int DH_PRIV = 3;
+    public static final int DH_PUB  = 4;
+    public static final int DH_KEY  = 5;
 
-	public DifHelm(BigInteger generator, BigInteger modulus) {
-		gen = generator;
-        mod = modulus;
+    private HashMap<Integer, BigInteger> modulos = new HashMap<Integer, BigInteger>();
+    
+    {
+		try {
+			BufferedReader br = new BufferedReader(new FileReader("DHmods.txt"));
+			while (br.ready()) {
+				String read = br.readLine();
+				int bitLen = Integer.parseInt(read.substring(0, read.length()-5));
+				StringBuffer sb = new StringBuffer();
+				if (read.matches("(\\d)*( )(bit:)")) {
+					do {
+						read = br.readLine();
+						sb.append(read);
+					} while (br.ready() && read.length() > 0); 
+				}
+				BigInteger modulus = new BigInteger(sb.toString().replace(" ",""),16);
+				modulos.put(bitLen, modulus);
+			}
+			
+			br.close();
+			
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
-	
+    
+	public DifHelm(BigInteger generator, Integer modulusSize) {
+		gen = generator;
+		System.out.println(modulusSize.toString());
+        mod = modulos.get(modulusSize);
+	}
 	
 	public BigInteger createInterKey() {
         priv = new BigInteger(mod.bitCount(),new Random());
-        return pub = DifHelm.modPow(gen,priv,mod);
-}
+        return pub = DifHelm.modPow(gen, priv, mod);
+	}
 
+	public BigInteger createEncryptionKey(BigInteger interKey){
+		return key = DifHelm.modPow(interKey,priv,mod);
+	}
 	/**
 	 * @param base
 	 * @param exponent

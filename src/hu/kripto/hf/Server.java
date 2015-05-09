@@ -31,8 +31,12 @@ import org.xml.sax.SAXException;
 
 public class Server implements Runnable {
 	public static final int PORT_NUMBER = 42424;
-	private int modulus;
+	private Socket clientSocket;
+	// A szukseges IO cuccok
+	DataInputStream clientInput;
+	DataOutputStream clientOutput;
 	private DifHelm dh;
+	private BigInteger clientPK;
 
 	public Server() throws IOException {
 		serverSocket = new ServerSocket(PORT_NUMBER);
@@ -48,110 +52,17 @@ public class Server implements Runnable {
 		byte[] array = UsertoBytes.getBytes(myUser);
 //		System.out.println(Integer.toString(array.length));
 		try {
-			Socket clientSocket = serverSocket.accept(); 
+			clientSocket = serverSocket.accept(); 
 
-			// A szukseges IO cuccok
-			DataInputStream clientInput = new DataInputStream(clientSocket.getInputStream());
-			DataOutputStream clientOutput = new DataOutputStream(clientSocket.getOutputStream());
+			clientInput = new DataInputStream(clientSocket.getInputStream());
+			clientOutput = new DataOutputStream(clientSocket.getOutputStream());
 
-			byte[] b = new byte[clientInput.readInt()];
-			clientInput.read(b);
-//			System.out.println(b.length);
-			
-			try {
-				Document d = obtenerDocumentDeByte(b);
-				d.getDocumentElement().normalize();
-				
-				NodeList nList = d.getElementsByTagName("dh");
-				Node nNode = nList.item(0);
-				NodeList ghChildren = nNode.getChildNodes();
-				int step = -1;
-				for (int temp = 0; temp < ghChildren.getLength(); temp++) {
-					 
-					Node node = ghChildren.item(temp);
-			 
-					if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-						node.getChildNodes();
-						Element eElement = (Element) node;
-						if(eElement.getNodeName().equals("step")){
-							step = Integer.parseInt(eElement.getTextContent());
-//							System.out.println(Integer.toString(step));
-						}else if (eElement.getNodeName().equals("modulus")) {
-							modulus = Integer.parseInt(eElement.getTextContent());
-						}
-					}
-				}
-				if(step == 1){
-					try {
-						int modIndex = indexOfModulus(modulus);
-						dh = new DifHelm(new BigInteger("2"),
-										new BigInteger(CONSTANTS.MOD_STRINGS[modIndex],16));
-						byte[] secondStep = secondStep(dh.createInterKey().toString(16));
-						System.out.println(dh.getValue(4));
-						clientOutput.writeInt(secondStep.length);
-						clientOutput.write(secondStep);
-						clientOutput.flush();
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-				
-			} catch (ParserConfigurationException | SAXException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			keyExchange();
 
-			byte[] b2 = new byte[clientInput.readInt()];
-			clientInput.read(b2);
-			try {
-				Document d = obtenerDocumentDeByte(b2);
-				d.getDocumentElement().normalize();
-				
-				NodeList nList = d.getElementsByTagName("dh");
-				Node nNode = nList.item(0);
-				NodeList ghChildren = nNode.getChildNodes();
-				int step = -1;
-				for (int temp = 0; temp < ghChildren.getLength(); temp++) {
-					 
-					Node node = ghChildren.item(temp);
-			 
-					if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-						node.getChildNodes();
-						Element eElement = (Element) node;
-						if(eElement.getNodeName().equals("step")){
-							step = Integer.parseInt(eElement.getTextContent());
-//							System.out.println(Integer.toString(step));
-						}else if (eElement.getNodeName().equals("modulus")) {
-							modulus = Integer.parseInt(eElement.getTextContent());
-						}
-					}
-				}
-				
-			} catch (ParserConfigurationException | SAXException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
-			clientSocket.close();
-		} catch (IOException e) {
-			e.printStackTrace(); // Eleg sok helyen elszallhat a kapcsolat, erdemes a java doksit egyszer vegigolvasni, hogy mennyi problema lephet fel halozati kommunikacio soran.
-		}
-
-		try {
 			serverSocket.close();
 		} catch (IOException e) {
-			e.printStackTrace();
+			e.printStackTrace(); 
 		}
-	}
-	
-	private Integer indexOfModulus(int modulus2) {
-		int index = 0;
-		for(Integer i : CONSTANTS.MOD_NUMS){
-			if(i.equals(modulus2)){
-				return index;
-			}
-			index++;
-		}
-		return null;
 	}
 
 	private byte[] secondStep(String hexString) {
@@ -217,6 +128,93 @@ public class Server implements Runnable {
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+	
+	private void keyExchange() throws IOException{
+		
+			byte[] b = new byte[clientInput.readInt()];
+			clientInput.read(b);
+			System.out.println("beolvasok " + b.length + " hoszú bájtot");
+			
+			int modulusSize=0;
+			try {
+				Document d = obtenerDocumentDeByte(b);
+				d.getDocumentElement().normalize();
+				
+				NodeList nList = d.getElementsByTagName("dh");
+				Node nNode = nList.item(0);
+				NodeList ghChildren = nNode.getChildNodes();
+				int step = -1;
+				for (int temp = 0; temp < ghChildren.getLength(); temp++) {
+					 
+					Node node = ghChildren.item(temp);
+			 
+					if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+						node.getChildNodes();
+						Element eElement = (Element) node;
+						if(eElement.getNodeName().equals("step")){
+							step = Integer.parseInt(eElement.getTextContent());
+						}else if (eElement.getNodeName().equals("modulus")) {
+							modulusSize = Integer.parseInt(eElement.getTextContent());
+							System.out.println(Integer.toString(modulusSize));
+						}
+					}
+				}
+				if(step == 1){
+					try {
+						dh = new DifHelm(new BigInteger("2"), modulusSize);
+						byte[] secondStep = secondStep(dh.createInterKey().toString(16));
+						clientOutput.writeInt(secondStep.length);
+						clientOutput.write(secondStep);
+						clientOutput.flush();
+						System.out.println("kiírok " + secondStep.length + " hosszú bájtot");
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+				
+			} catch (ParserConfigurationException | SAXException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+			byte[] b2 = new byte[clientInput.readInt()];
+			clientInput.read(b2);
+			System.out.println("beolvasok " + b.length + " hoszú bájtot");
+			try {
+				Document d = obtenerDocumentDeByte(b2);
+				d.getDocumentElement().normalize();
+				
+				NodeList nList = d.getElementsByTagName("dh");
+				Node nNode = nList.item(0);
+				NodeList ghChildren = nNode.getChildNodes();
+				int step = -1;
+				for (int temp = 0; temp < ghChildren.getLength(); temp++) {
+					 
+					Node node = ghChildren.item(temp);
+			 
+					if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+						node.getChildNodes();
+						Element eElement = (Element) node;
+						if(eElement.getNodeName().equals("step")){
+							step = Integer.parseInt(eElement.getTextContent());
+//							System.out.println(Integer.toString(step));
+						}else if (eElement.getNodeName().equals("myresult") || eElement.getNodeName().equals("myresult")) {
+							clientPK = new BigInteger(eElement.getTextContent(),16);
+						}
+					}
+				}
+				if(step == 3){
+					dh.createEncryptionKey(clientPK);
+				}
+				
+			} catch (ParserConfigurationException | SAXException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+			clientSocket.close();
+		
+		
 	}
 	
 	private Document obtenerDocumentDeByte(byte[] documentoXml) throws ParserConfigurationException, SAXException, IOException  {

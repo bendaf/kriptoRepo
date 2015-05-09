@@ -9,6 +9,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException; // Ha a kommunikacioban valami balul sul el
+import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException; // Ha rossz cimre probalunk csatlakozni
@@ -32,11 +33,13 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import com.sun.media.jfxmedia.events.NewFrameEvent;
+
 public class Client implements Runnable {
 	protected Socket clientSocket;
-	private Integer myModulus;
-	private long myResult;
-	private DH dh;
+	private BigInteger myModulus;
+	private BigInteger serverPK;
+	private DifHelm dh;
 	
 	public Client() throws UnknownHostException, IOException {
 		clientSocket = new Socket(InetAddress.getLocalHost(), Server.PORT_NUMBER);
@@ -47,20 +50,21 @@ public class Client implements Runnable {
 	}
 	
 	public void run() {
-
 		try {
 			
 			DataInputStream serverInput = new DataInputStream(clientSocket.getInputStream());
 			DataOutputStream serverOutput = new DataOutputStream(clientSocket.getOutputStream());
 			
-			
 			byte[] firstStep = firstStep();
 			serverOutput.writeInt(firstStep.length);
 			serverOutput.write(firstStep);
 			serverOutput.flush();
+			System.out.println("kiírok " + firstStep.length + " hosszú bájtot");
 			
 			byte[] b = new byte[serverInput.readInt()];
 			serverInput.read(b);
+			System.out.println("beolvasok " + b.length + " hoszú bájtot");
+			
 			
 			try {
 				Document d = obtenerDocumentDeByte(b);
@@ -80,19 +84,19 @@ public class Client implements Runnable {
 						if(eElement.getNodeName().equals("step")){
 							step = Integer.parseInt(eElement.getTextContent());
 						}else if (eElement.getNodeName().equals("myresult")) {
-							myResult = Long.parseLong(eElement.getTextContent());
-//							System.out.println(Long.toString(myResult));
+							serverPK = new BigInteger(eElement.getTextContent(),16);
 						}
 					}
 				}
 				if(step == 2){
 					try {
-						dh = new DH(2, myModulus);
-						byte[] thirdStep = thirdStep(Long.toHexString(dh.createInterKey()));
+						byte[] thirdStep = thirdStep(dh.createInterKey().toString(16));
 						
 						serverOutput.writeInt(thirdStep.length);
 						serverOutput.write(thirdStep);
 						serverOutput.flush();
+						System.out.println("kiírok " + thirdStep.length + " hosszú bájtot");
+						dh.createEncryptionKey(serverPK);
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
@@ -101,9 +105,7 @@ public class Client implements Runnable {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
-//			System.out.println(firstStep.length);
 			
-			// Itt se felejtsetek lezarni a kapcsolatot!
 			clientSocket.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -190,7 +192,7 @@ public class Client implements Runnable {
 			rootElement.appendChild(record);
 			
 			Element modulus = doc.createElement("modulus");
-			modulus.setTextContent(Integer.toString(chooseModulus()));
+			modulus.setTextContent(chooseModulus().toString());
 			rootElement.appendChild(modulus);
 			
 			// write the content into xml file
@@ -238,10 +240,10 @@ public class Client implements Runnable {
 	    return builder.parse(new ByteArrayInputStream(documentoXml));
 	}
 	
-	private int chooseModulus() {
+	private Integer chooseModulus() {
 		Random r = new Random();
-		myModulus = CONSTANTS.MOD_NUMS[r.nextInt(CONSTANTS.MOD_NUMS.length)]; 
-		
-		return myModulus;
+		Integer modulusSize = CONSTANTS.MOD_NUMS[r.nextInt(CONSTANTS.MOD_NUMS.length)];
+		dh = new DifHelm(new BigInteger("2"),modulusSize); 
+		return modulusSize;
 	}
 }
