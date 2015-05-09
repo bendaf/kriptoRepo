@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -51,7 +52,7 @@ public class Server implements Runnable {
 		User myUser = new User("ASDF","adfkvjaovj");
 		myUser.addRecord(new Record("valami.hu","DKDKDKLDLK","DKJHVUBDU"));
 		myUser.addRecord(new Record("a", "sdadf", "agffd"));
-		byte[] array = UsertoBytes.getBytes(myUser);
+//		byte[] array = UsertoBytes.getBytes(myUser);
 //		System.out.println(Integer.toString(array.length));
 		try {
 			clientSocket = serverSocket.accept(); 
@@ -66,9 +67,9 @@ public class Server implements Runnable {
 				if(checkUser(currentUser)){
 					sendRecords(currentUser);
 				}else {
-					createUser(currentUser);
+					addUserToXml(currentUser);
 				}
-				getRecords(currentUser);
+				getRecords();
 			}catch(UserAuthFaildException e){
 				e.printStackTrace();
 			}
@@ -81,9 +82,22 @@ public class Server implements Runnable {
 		}
 	}
 
-	private void getRecords(User currentUser) {
+	private void getRecords() {
+		while(!Thread.currentThread().isInterrupted()){
+			String recordXml = Network.getXml(clientInput);
+			addRecordToXml(recordFromXml(recordXml));
+		}
+		
+	}
+
+	private void addRecordToXml(Record recordFromXml) {
 		// TODO Auto-generated method stub
 		
+	}
+
+	private Record recordFromXml(String recordXml) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	private void sendRecords(User currentUser) {
@@ -98,17 +112,41 @@ public class Server implements Runnable {
 		return null;
 	}
 
-	private void createUser(User idUser) {
+	private void addUserToXml(User idUser) {
 		// TODO Auto-generated method stub
 		
 	}
 
+	/**
+	 * @param idUser
+	 * @return
+	 * @throws UserAuthFaildException
+	 */
 	private boolean checkUser(User idUser) throws UserAuthFaildException{
-		// TODO Auto-generated method stub
+		ArrayList<User> users = getUsersFromXml();
+		for(User u : users){
+			if(u.getName().equals(idUser.getName())){
+				if(u.getVerifier().equals(idUser.getVerifier())){
+					return true;
+				}else{
+					throw new UserAuthFaildException();
+				}
+			}
+		}
 		return false;
 	}
 
+	private ArrayList<User> getUsersFromXml() {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
 	private User authUser() {
+		String userXml = Network.getXml(clientInput);
+		return xml2User(userXml);
+	}
+
+	private User xml2User(String userXml) {
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -222,7 +260,6 @@ public class Server implements Runnable {
 				}
 				
 			} catch (ParserConfigurationException | SAXException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 
@@ -257,7 +294,6 @@ public class Server implements Runnable {
 				}
 				
 			} catch (ParserConfigurationException | SAXException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			clientSocket.close();

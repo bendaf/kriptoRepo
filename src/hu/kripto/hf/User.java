@@ -3,7 +3,7 @@ package hu.kripto.hf;
 import java.util.ArrayList;
 import java.util.Collection;
 
-public class User {
+public class User  {
 	private String name;
 	private ArrayList<Record> records = new ArrayList<>();
 	private String verifier;
@@ -33,5 +33,16 @@ public class User {
 	}
 	public ArrayList<Record> getRecords(){
 		return records;
+	}
+	
+	@Override
+	public boolean equals(Object object){
+		if (object != null && object instanceof User)
+        {
+            if(name.equals(((User) object).name))
+            	if(verifier.equals((User)object))return true;
+        }
+
+        return false;
 	}
 }

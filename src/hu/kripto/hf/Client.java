@@ -8,16 +8,21 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException; // Ha a kommunikacioban valami balul sul el
-import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException; // Ha rossz cimre probalunk csatlakozni
 import java.nio.charset.Charset;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Random;
 
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
@@ -35,9 +40,6 @@ import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
-
-import com.sun.javafx.event.EventQueue;
-import com.sun.media.jfxmedia.events.NewFrameEvent;
 
 public class Client implements Runnable {
 	protected Socket clientSocket;
@@ -76,7 +78,6 @@ public class Client implements Runnable {
 			r.cifher(usernameKey,passwordKey);
 			sendRecrodData(r);
 		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
@@ -89,14 +90,37 @@ public class Client implements Runnable {
 		
 	}
 
+	/**
+	 * @param r
+	 * @return
+	 */
+	/**
+	 * @param r
+	 * @return
+	 */
 	private String createRecordXml(Record r) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
 	private byte[] pbkdf2(byte[] masterKey2, byte[] salt) {
-		// TODO Auto-generated method stub
+		
+		try {
+			SecretKeyFactory kf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+			return kf.generateSecret(new PBEKeySpec(bytes2Char(masterKey2),salt,42)).getEncoded();
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+			e.printStackTrace();
+		}
+		
 		return null;
+	}
+
+	private char[] bytes2Char(byte[] byteArray) {
+		char[] charArray = new char[byteArray.length];
+		for (int i = 0; i < byteArray.length; i++) {
+			charArray[i] = (char)(byteArray[i] & 0xFF);
+		}
+		return charArray;
 	}
 
 	private void getRecords() {
@@ -116,16 +140,21 @@ public class Client implements Runnable {
 		try {
 			sendUserData(username,new String(verifier,"UTF-8"));
 		} catch (UnsupportedEncodingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
 		getRecords();
 	}
 
-	private byte[] sha1(byte[] masterKey2) {
-		// TODO Auto-generated method stub
-		return null;
+	private byte[] sha1(byte[] byteArray) {
+		MessageDigest md = null;
+	    try {
+	        md = MessageDigest.getInstance("SHA-1");
+	    }
+	    catch(NoSuchAlgorithmException e) {
+	        e.printStackTrace();
+	    } 
+	    return md.digest(byteArray);
 	}
 
 	private void sendUserData(String username, String verifier) {
@@ -140,14 +169,8 @@ public class Client implements Runnable {
 		return null;
 	}
 	
-	private String base64Decode(String username) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	
 	private byte[] sha1(String masterKey) { // 160 bites kimenet!
-		// TODO Auto-generated method stub
-		return null;
+		return sha1(Arrays.copyOf(masterKey.getBytes(Charset.forName("UTF-8")), 16));
 	}
 
 	private void keyExchange() throws IOException{
@@ -198,7 +221,6 @@ public class Client implements Runnable {
 				}
 			}
 		} catch (ParserConfigurationException | SAXException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
