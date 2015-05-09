@@ -3,6 +3,7 @@ package hu.kripto.hf;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -47,8 +48,9 @@ public class Server implements Runnable {
 	}
 
 	public void run() {
-		User myUser = new User("ASDF","valami.hu",
-				"DKDKDKLDLK","DKJHVUBDU","adfkvjaovj");
+		User myUser = new User("ASDF","adfkvjaovj");
+		myUser.addRecord(new Record("valami.hu","DKDKDKLDLK","DKJHVUBDU"));
+		myUser.addRecord(new Record("a", "sdadf", "agffd"));
 		byte[] array = UsertoBytes.getBytes(myUser);
 //		System.out.println(Integer.toString(array.length));
 		try {
@@ -58,11 +60,57 @@ public class Server implements Runnable {
 			clientOutput = new DataOutputStream(clientSocket.getOutputStream());
 
 			keyExchange();
-
+			
+			try{
+				User currentUser = authUser();
+				if(checkUser(currentUser)){
+					sendRecords(currentUser);
+				}else {
+					createUser(currentUser);
+				}
+				getRecords(currentUser);
+			}catch(UserAuthFaildException e){
+				e.printStackTrace();
+			}
+			
 			serverSocket.close();
+		} catch (EOFException e){
+			e.printStackTrace();
 		} catch (IOException e) {
 			e.printStackTrace(); 
 		}
+	}
+
+	private void getRecords(User currentUser) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	private void sendRecords(User currentUser) {
+		byte[] iv = Coder.generateIV();
+		byte[] recordXmlBytes = Coder.encode(createRecordXml(currentUser),
+				dh.getValue(DifHelm.DH_KEY).toByteArray(),iv);
+		Network.send(clientOutput,iv,recordXmlBytes);
+	}
+
+	private String createRecordXml(User currentUser) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private void createUser(User idUser) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	private boolean checkUser(User idUser) throws UserAuthFaildException{
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	private User authUser() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	private byte[] secondStep(String hexString) {
@@ -156,7 +204,7 @@ public class Server implements Runnable {
 							step = Integer.parseInt(eElement.getTextContent());
 						}else if (eElement.getNodeName().equals("modulus")) {
 							modulusSize = Integer.parseInt(eElement.getTextContent());
-							System.out.println(Integer.toString(modulusSize));
+//							System.out.println(Integer.toString(modulusSize));
 						}
 					}
 				}

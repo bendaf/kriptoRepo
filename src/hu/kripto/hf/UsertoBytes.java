@@ -32,15 +32,16 @@ public class UsertoBytes {
 			doc.appendChild(rootElement);
 			rootElement.setAttribute("name", myUser.getName());
 			
-			Element record = doc.createElement("record");
-			rootElement.appendChild(record);
- 
-			// set attribute to staff element
-			record.setAttribute("url", myUser.getUrl());
-			record.setAttribute("username", myUser.getUsernameHash());
-			record.setAttribute("password", myUser.getPasswordHash());
-			record.setAttribute("recordsalt", myUser.getRecordSalt());
-			
+			for( Record r : myUser.getRecords()){
+				Element record = doc.createElement("record");
+				rootElement.appendChild(record);
+	 
+				// set attribute to staff element
+				record.setAttribute("url", r.getUrl());
+				record.setAttribute("username", r.getUsernameHash());
+				record.setAttribute("password", r.getPasswordHash());
+				record.setAttribute("recordsalt", r.getRecordSalt());
+			}
 			// write the content into xml file
 			TransformerFactory transformerFactory = TransformerFactory.newInstance();
 			Transformer transformer = transformerFactory.newTransformer();

@@ -1,7 +1,6 @@
 package hu.kripto.hf;
 
 
-
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -9,10 +8,14 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException; // Ha a kommunikacioban valami balul sul el
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException; // Ha rossz cimre probalunk csatlakozni
+import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Random;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -33,13 +36,16 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
+import com.sun.javafx.event.EventQueue;
 import com.sun.media.jfxmedia.events.NewFrameEvent;
 
 public class Client implements Runnable {
 	protected Socket clientSocket;
-	private BigInteger myModulus;
 	private BigInteger serverPK;
 	private DifHelm dh;
+	private DataOutputStream serverOutput;
+	private DataInputStream serverInput;
+	private byte[] masterKey;
 	
 	public Client() throws UnknownHostException, IOException {
 		clientSocket = new Socket(InetAddress.getLocalHost(), Server.PORT_NUMBER);
@@ -51,65 +57,151 @@ public class Client implements Runnable {
 	
 	public void run() {
 		try {
-			
-			DataInputStream serverInput = new DataInputStream(clientSocket.getInputStream());
-			DataOutputStream serverOutput = new DataOutputStream(clientSocket.getOutputStream());
-			
-			byte[] firstStep = firstStep();
-			serverOutput.writeInt(firstStep.length);
-			serverOutput.write(firstStep);
-			serverOutput.flush();
-			System.out.println("kiírok " + firstStep.length + " hosszú bájtot");
-			
-			byte[] b = new byte[serverInput.readInt()];
-			serverInput.read(b);
-			System.out.println("beolvasok " + b.length + " hoszú bájtot");
-			
-			
-			try {
-				Document d = obtenerDocumentDeByte(b);
-				d.getDocumentElement().normalize();
-				
-				NodeList nList = d.getElementsByTagName("dh");
-				Node nNode = nList.item(0);
-				NodeList ghChildren = nNode.getChildNodes();
-				int step = -1;
-				for (int temp = 0; temp < ghChildren.getLength(); temp++) {
-					 
-					Node node = ghChildren.item(temp);
-			 
-					if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-						node.getChildNodes();
-						Element eElement = (Element) node;
-						if(eElement.getNodeName().equals("step")){
-							step = Integer.parseInt(eElement.getTextContent());
-						}else if (eElement.getNodeName().equals("myresult")) {
-							serverPK = new BigInteger(eElement.getTextContent(),16);
-						}
-					}
-				}
-				if(step == 2){
-					try {
-						byte[] thirdStep = thirdStep(dh.createInterKey().toString(16));
-						
-						serverOutput.writeInt(thirdStep.length);
-						serverOutput.write(thirdStep);
-						serverOutput.flush();
-						System.out.println("kiírok " + thirdStep.length + " hosszú bájtot");
-						dh.createEncryptionKey(serverPK);
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-			} catch (ParserConfigurationException | SAXException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			}
+			serverInput = new DataInputStream(clientSocket.getInputStream());
+			serverOutput = new DataOutputStream(clientSocket.getOutputStream());
+			keyExchange();
 			
 			clientSocket.close();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void addRecord(Record r) {
+		try {
+			r.setRecordSalt(new String(Coder.generateIV(),"UTF-8"));
+			byte[] recordKey = pbkdf2(masterKey, r.getRecordSalt().getBytes(Charset.forName("UTF-8")));
+			byte[] usernameKey = pbkdf2(recordKey, new String("USER_ID").getBytes(Charset.forName("UTF-8")));
+			byte[] passwordKey = pbkdf2(recordKey, new String("PASSWORD").getBytes(Charset.forName("UTF-8")));
+			r.cifher(usernameKey,passwordKey);
+			sendRecrodData(r);
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	private void sendRecrodData(Record r) {
+		byte[] iv = Coder.generateIV();
+		byte[] recordXmlBytes = Coder.encode(createRecordXml(r),
+				dh.getValue(DifHelm.DH_KEY).toByteArray(),iv);
+		Network.send(serverOutput,iv,recordXmlBytes);
+		
+	}
+
+	private String createRecordXml(Record r) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private byte[] pbkdf2(byte[] masterKey2, byte[] salt) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private void getRecords() {
+		String recordsXml = Network.getXml(serverInput);
+		ArrayList<Record> records =  getRecords(recordsXml);
+		//EventQueue.invokeLater(new RefreshRecordsList());
+	}
+
+	private ArrayList<Record> getRecords(String recordsXml) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private void sendAuth(String username, String password) throws UserAuthFaildException{
+		masterKey = sha1(password);
+		byte[] verifier = sha1(masterKey);
+		try {
+			sendUserData(username,new String(verifier,"UTF-8"));
+		} catch (UnsupportedEncodingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		getRecords();
+	}
+
+	private byte[] sha1(byte[] masterKey2) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private void sendUserData(String username, String verifier) {
+		byte[] iv = Coder.generateIV();
+		byte[] authXmlBytes = Coder.encode(createAuthXml(username,verifier),
+				dh.getValue(DifHelm.DH_KEY).toByteArray(),iv);
+		Network.send(serverOutput,iv,authXmlBytes);
+	}
+
+	private String createAuthXml(String username, String verifier) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	private String base64Decode(String username) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+	
+	private byte[] sha1(String masterKey) { // 160 bites kimenet!
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	private void keyExchange() throws IOException{
+
+		byte[] firstStep = firstStep();
+		serverOutput.writeInt(firstStep.length);
+		serverOutput.write(firstStep);
+		serverOutput.flush();
+		System.out.println("kiírok " + firstStep.length + " hosszú bájtot");
+		
+		byte[] b = new byte[serverInput.readInt()];
+		serverInput.read(b);
+		System.out.println("beolvasok " + b.length + " hoszú bájtot");
+		
+		try {
+			Document d = obtenerDocumentDeByte(b);
+			d.getDocumentElement().normalize();
+			
+			NodeList nList = d.getElementsByTagName("dh");
+			Node nNode = nList.item(0);
+			NodeList ghChildren = nNode.getChildNodes();
+			int step = -1;
+			for (int temp = 0; temp < ghChildren.getLength(); temp++) {
+				 
+				Node node = ghChildren.item(temp);
+		 
+				if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+					node.getChildNodes();
+					Element eElement = (Element) node;
+					if(eElement.getNodeName().equals("step")){
+						step = Integer.parseInt(eElement.getTextContent());
+					}else if (eElement.getNodeName().equals("myresult")) {
+						serverPK = new BigInteger(eElement.getTextContent(),16);
+					}
+				}
+			}
+			if(step == 2){
+				try {
+					byte[] thirdStep = thirdStep(dh.createInterKey().toString(16));
+					
+					serverOutput.writeInt(thirdStep.length);
+					serverOutput.write(thirdStep);
+					serverOutput.flush();
+					System.out.println("kiírok " + thirdStep.length + " hosszú bájtot");
+					dh.createEncryptionKey(serverPK);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		} catch (ParserConfigurationException | SAXException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
 	}
 
 	private byte[] thirdStep(String hexString) {

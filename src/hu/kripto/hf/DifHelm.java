@@ -5,6 +5,9 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Random;
 
@@ -62,7 +65,18 @@ public class DifHelm {
 	}
 
 	public BigInteger createEncryptionKey(BigInteger interKey){
-		return key = DifHelm.modPow(interKey,priv,mod);
+		BigInteger iKey = DifHelm.modPow(interKey,priv,mod);
+		// SHA-1 hash
+		MessageDigest md;
+		try {
+			md = MessageDigest.getInstance("SHA-1");
+			byte[] sha1 = md.digest(iKey.toByteArray());
+			key = new BigInteger(Arrays.copyOf(sha1, 16)); // 16 byte = 128 bit-re vágás
+		} catch (NoSuchAlgorithmException e) {
+			e.printStackTrace();
+			key = iKey;
+		}
+		return key;
 	}
 	/**
 	 * @param base
