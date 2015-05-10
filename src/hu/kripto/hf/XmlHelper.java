@@ -108,7 +108,7 @@ public class XmlHelper {
 			doc.appendChild(rootElement);
 			for(User myUser : users){
 				Element userElement = doc.createElement(USER);
-				userElement.appendChild(rootElement);
+				rootElement.appendChild(userElement);
 				userElement.setAttribute(NAME, myUser.getName());
 				userElement.setAttribute(VERIFIER, myUser.getVerifier());
 				
