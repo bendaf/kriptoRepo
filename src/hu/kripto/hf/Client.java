@@ -77,7 +77,6 @@ public class Client implements Runnable {
 				sendAuth("AAA", "BBB");
 				addRecord(new Record("dad.da", "dasfsdf", "dadfadf","dadfadf"));
 			} catch (UserAuthFaildException e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 			clientSocket.close();
@@ -160,6 +159,7 @@ public class Client implements Runnable {
 
 	private void addRecord(Record r) {
 		try {
+			System.out.println(r.getUrl());
 			r.setRecordSalt(new String(Coder.generateIV(),"UTF-8"));
 			byte[] recordKey = pbkdf2(masterKey, r.getRecordSalt().getBytes(Charset.forName("UTF-8")));
 			byte[] usernameKey = pbkdf2(recordKey, new String("USER_ID").getBytes(Charset.forName("UTF-8")));
@@ -179,7 +179,7 @@ public class Client implements Runnable {
 	}
 
 	private byte[] pbkdf2(byte[] masterKey2, byte[] salt) {
-		
+		System.out.println(bytes2Char(masterKey2) + " AAA " + bytes2Char(salt));
 		try {
 			SecretKeyFactory kf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
 			return kf.generateSecret(new PBEKeySpec(bytes2Char(masterKey2),salt,42)).getEncoded();

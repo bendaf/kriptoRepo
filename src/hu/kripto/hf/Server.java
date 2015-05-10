@@ -68,8 +68,10 @@ public class Server implements Runnable {
 				User currentUser = authUser();
 				if(checkUser(currentUser)){
 					sendRecords(currentUser);
+					System.out.println("User azonosítva");
 				}else {
 					XmlHelper.addUserToFile(currentUser,usersXml);
+					System.out.println("User hozzáadva");
 				}
 				getRecords(currentUser);
 			}catch(UserAuthFaildException e){
