@@ -1,7 +1,8 @@
-package hu.kripto.hf;
+package hu.kripto.hf.functions;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 
 public class Network {
@@ -14,7 +15,7 @@ public class Network {
 		System.arraycopy(messageBytes, 0, c, iv.length, messageBytes.length);
 		
 		try {
-			System.out.println(iv.length);
+//			System.out.println(iv.length);
 			output.writeInt(c.length);
 			output.write(c);
 			output.flush();
@@ -25,7 +26,7 @@ public class Network {
 		
 	}
 
-	public static String getXml(DataInputStream input, byte[] key) {
+	public static String getXml(DataInputStream input, byte[] key){
 		try {
 			int a = input.readInt();
 			byte[] b = new byte[a-16];
@@ -36,7 +37,7 @@ public class Network {
 			
 			return Coder.decode(b, key, iv);
 		} catch (IOException e) {
-			e.printStackTrace();
+			
 		}
 		
 		return null;

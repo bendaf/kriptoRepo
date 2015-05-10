@@ -1,6 +1,18 @@
-package hu.kripto.hf;
+package hu.kripto.hf.client;
 
 
+import hu.kripto.hf.UserAuthFaildException;
+import hu.kripto.hf.database.CONSTANTS;
+import hu.kripto.hf.database.Record;
+import hu.kripto.hf.database.User;
+import hu.kripto.hf.database.XmlHelper;
+import hu.kripto.hf.functions.Coder;
+import hu.kripto.hf.functions.DifHelm;
+import hu.kripto.hf.functions.Network;
+import hu.kripto.hf.server.Server;
+
+import java.awt.Component;
+import java.awt.EventQueue;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
@@ -19,6 +31,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.Vector;
 
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
@@ -42,7 +55,7 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 
-public class Client implements Runnable {
+public class Client extends Thread {
 	protected Socket clientSocket;
 	private BigInteger serverPK;
 	private DifHelm dh;
@@ -50,9 +63,18 @@ public class Client implements Runnable {
 	private DataInputStream serverInput;
 	private byte[] masterKey;
 	private String username;
+	private PasswordSafeGUI psfgui;
 	
 	public Client() throws UnknownHostException, IOException {
 		clientSocket = new Socket(InetAddress.getLocalHost(), Server.PORT_NUMBER);
+		serverInput = new DataInputStream(clientSocket.getInputStream());
+		serverOutput = new DataOutputStream(clientSocket.getOutputStream());
+		keyExchange();
+	}
+
+	public Client(PasswordSafeGUI passwordSafeGUI) throws UnknownHostException, IOException {
+		this();
+		psfgui = passwordSafeGUI;
 	}
 
 	public void close() throws IOException {
@@ -69,16 +91,6 @@ public class Client implements Runnable {
 
 	public void run() {
 		try {
-			serverInput = new DataInputStream(clientSocket.getInputStream());
-			serverOutput = new DataOutputStream(clientSocket.getOutputStream());
-			keyExchange();
-			
-			try {
-				sendAuth("AAA", "BBB");
-				addRecord(new Record("dad.da", "dasfsdf", "dadfadf","dadfadf"));
-			} catch (UserAuthFaildException e) {
-				e.printStackTrace();
-			}
 			clientSocket.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -138,7 +150,7 @@ public class Client implements Runnable {
 		
 	}
 
-	private void sendAuth(String username, String password) throws UserAuthFaildException{
+	public void sendAuth(String username, String password) throws UserAuthFaildException{
 		masterKey = sha1(password);
 		this.username = username;
 		byte[] verifier = sha1(masterKey);
@@ -147,24 +159,49 @@ public class Client implements Runnable {
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}
-		
+		try{
 		getRecords();
+		}catch(NullPointerException e){
+			throw new UserAuthFaildException();
+		}
 	}
 
 	private void getRecords() {
 		String recordsXml = Network.getXml(serverInput, dh.getValue(DifHelm.DH_KEY).toByteArray());
 		ArrayList<Record> records =  XmlHelper.getRecordsFromXml(recordsXml);
-		//EventQueue.invokeLater(new RefreshRecordsList());
+		for(Record r : records){
+//			System.out.println(r.getRecordSalt());
+			byte[] recordKey = pbkdf2(masterKey, r.getRecordSalt().getBytes(Charset.forName("UTF-8")));
+			byte[] usernameKey = pbkdf2(recordKey, new String("USER_ID").getBytes(Charset.forName("UTF-8")));
+			byte[] passwordKey = pbkdf2(recordKey, new String("PASSWORD").getBytes(Charset.forName("UTF-8")));
+			r.deCipher(usernameKey,passwordKey);
+			User u = new User("AAA","d");
+			u.addRecord(r);
+			System.out.println();
+			XmlHelper.createUserXml(u);
+			System.out.println();
+		}
+		final ArrayList<Record> rs = records;
+		EventQueue.invokeLater(new Runnable() {
+			@Override
+			public void run() {
+				for(Record r : rs){
+					psfgui.listmodel.addElement(r.getUrl() + "   " + r.getUsernameHash() + "   " + r.getPasswordHash());
+				}
+				
+			}
+		});
+		
 	}
-
-	private void addRecord(Record r) {
+	
+	public void addRecord(Record r) {
 		try {
-			System.out.println(r.getUrl());
+//			System.out.println(r.getUrl());
 			r.setRecordSalt(new String(Coder.generateIV(),"UTF-8"));
 			byte[] recordKey = pbkdf2(masterKey, r.getRecordSalt().getBytes(Charset.forName("UTF-8")));
 			byte[] usernameKey = pbkdf2(recordKey, new String("USER_ID").getBytes(Charset.forName("UTF-8")));
 			byte[] passwordKey = pbkdf2(recordKey, new String("PASSWORD").getBytes(Charset.forName("UTF-8")));
-			r.cifher(usernameKey,passwordKey);
+			r.cipher(usernameKey,passwordKey);
 			sendRecrodData(r);
 		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
@@ -172,17 +209,17 @@ public class Client implements Runnable {
 	}
 
 	private void sendRecrodData(Record r) {
-		System.out.println(dh.getValue(DifHelm.DH_KEY).toString());
-		Network.send(serverOutput,XmlHelper.createRecordXml(username,r),
+		Network.send(serverOutput,XmlHelper.createRecordXml(Coder.base64Encode(username),r),
 					dh.getValue(DifHelm.DH_KEY).toByteArray());
 		
 	}
 
 	private byte[] pbkdf2(byte[] masterKey2, byte[] salt) {
-		System.out.println(bytes2Char(masterKey2) + " AAA " + bytes2Char(salt));
+//		System.out.println(bytes2Char(masterKey2) + " AAA " + bytes2Char(salt));
 		try {
 			SecretKeyFactory kf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-			return kf.generateSecret(new PBEKeySpec(bytes2Char(masterKey2),salt,42)).getEncoded();
+			PBEKeySpec ks = new PBEKeySpec(bytes2Char(masterKey2),salt,42,20);
+			return kf.generateSecret(ks).getEncoded();
 		} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
 			e.printStackTrace();
 		}
@@ -214,22 +251,10 @@ public class Client implements Runnable {
 	}
 
 	private void sendUserData(String username, String verifier) {
-		
-		Network.send(serverOutput,XmlHelper.createAuthXml(base64Encode(username),base64Encode(verifier)),
-							dh.getValue(DifHelm.DH_KEY).toByteArray());
+		Network.send(serverOutput,XmlHelper.createAuthXml(Coder.base64Encode(username),
+							Coder.base64Encode(verifier)),dh.getValue(DifHelm.DH_KEY).toByteArray());
 	}
 	
-	public static String base64Encode(String token) {
-		byte[] encodedBytes = Base64.encodeBase64(token.getBytes());
-		return  new String(encodedBytes);
-	}
-	
-	public static String base64Decode(String token) {
-		byte[] decodedBytes = Base64.decodeBase64(token.getBytes());
-		return new String(decodedBytes);
-	}
-	
-
 	// Csatlakozunk a sajat gepunkon futo szerverhez. A sajat gepunk hostneve localhost, ip cime 127.0.0.1.
 	private byte[] firstStep(){
 		try{

@@ -1,4 +1,4 @@
-package hu.kripto.hf;
+package hu.kripto.hf.database;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -35,7 +35,7 @@ public class XmlHelper {
 	private final static String URL = "url";
 	private final static String USERNAME = "username";
 	private final static String PASSWORD = "password";
-	private final static String SALT = "recolrdsalt";
+	private final static String SALT = "recordsalt";
 	
 	public static String createAuthXml(String username, String verifier) {
 		DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
@@ -66,7 +66,7 @@ public class XmlHelper {
 	}
 
 	public static User getAuthFromXml(String userXml){
-		System.out.println(userXml);
+		print(userXml);
 		try {
 			Document d = string2Doc(userXml);
 			d.getDocumentElement().normalize();
@@ -93,6 +93,7 @@ public class XmlHelper {
 	public static void addUserToFile(User idUser, String fileName) {
 		ArrayList<User> users = getUsersFromFlie(fileName);
 		//ArrayList<User> users = new ArrayList<User>();
+//		System.out.println("VEGTELEN");
 		users.add(idUser);
 		createUsersFile(users,fileName);
 	}
@@ -112,9 +113,9 @@ public class XmlHelper {
 				userElement.setAttribute(NAME, myUser.getName());
 				userElement.setAttribute(VERIFIER, myUser.getVerifier());
 				
-				for( Record r : myUser.getRecords()){
+				for(Record r : myUser.getRecords()){
 					Element record = doc.createElement(RECORD);
-					rootElement.appendChild(record);
+					userElement.appendChild(record);
 		 
 					// set attribute to staff element
 					record.setAttribute(URL, r.getUrl());
@@ -131,7 +132,6 @@ public class XmlHelper {
 
 			// Output to console for testing
 			// StreamResult result = new StreamResult(System.out);
-
 			transformer.transform(source, result);
 		} catch (ParserConfigurationException | TransformerException e) {
 			e.printStackTrace();
@@ -155,14 +155,16 @@ public class XmlHelper {
 				Node userNode = nList.item(temp);
 				if (userNode.getNodeType() == Node.ELEMENT_NODE) {
 					User myUser;
-					Element eElement = (Element) userNode;
-					String username = eElement.getAttribute(NAME);
-					String verifier = eElement.getAttribute(VERIFIER);
+					Element userElement = (Element) userNode;
+					String username = userElement.getAttribute(NAME);
+					String verifier = userElement.getAttribute(VERIFIER);
+					
 					myUser = new User(username, verifier);
-					for(int i = 0; i< userNode.getChildNodes().getLength();i++){
-						Node recordNode = userNode.getChildNodes().item(i);
+					for(int i = 0; i < userElement.getElementsByTagName(RECORD).getLength();i++){
+						Node recordNode = userElement.getElementsByTagName(RECORD).item(i);
 						if(recordNode.getNodeType() == Node.ELEMENT_NODE){
 							Element record = (Element) recordNode;
+							
 							myUser.addRecord(new Record(record.getAttribute(URL),
 									record.getAttribute(USERNAME), record.getAttribute(PASSWORD),
 									record.getAttribute(SALT)));
@@ -189,7 +191,7 @@ public class XmlHelper {
 			Element rootElement = doc.createElement(USER);
 			doc.appendChild(rootElement);
 			rootElement.setAttribute(NAME, currentUser.getName());
-			
+//			System.out.println(currentUser.getRecords().size());
 			for( Record r : currentUser.getRecords()){
 				Element record = doc.createElement(RECORD);
 				rootElement.appendChild(record);
@@ -213,20 +215,18 @@ public class XmlHelper {
 	}
 
 	public static ArrayList<Record> getRecordsFromXml(String recordsXml) { //User xml
-		System.out.println(recordsXml);
+		print(recordsXml);
 		ArrayList<Record> records = new ArrayList<>();
 		
 		Document doc;
 		try {
 			doc = string2Doc(recordsXml);
 			doc.getDocumentElement().normalize();
-			NodeList nList = doc.getElementsByTagName(RECORD); // TODO ???
+			NodeList nList = doc.getElementsByTagName(RECORD); 
 			for (int temp = 0; temp < nList.getLength(); temp++) {
-		 
 				Node nNode = nList.item(temp);
 		 
 				if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-					
 					Element eElement = (Element) nNode;
 					records.add(new Record(eElement.getAttribute(URL), eElement.getAttribute(USERNAME),
 							eElement.getAttribute(PASSWORD),eElement.getAttribute(SALT)));
@@ -241,19 +241,27 @@ public class XmlHelper {
 
 	public static String createRecordXml(String username, Record r) {
 		User u = new User(username,"id");
+		u.addRecord(r);
 		return createUserXml(u);
 	}
 
 	public static Record getRecordFromXml(String recordXml){
-		System.out.println("RecordXml: ");
-		return getRecordsFromXml(recordXml).get(0);
+//		System.out.println("RecordXml: ");
+		ArrayList<Record> records = getRecordsFromXml(recordXml);
+		if(records.size()>0)
+			return records.get(0);
+		else return null;
 	}
 
 	public static void addRecordToFile(User user, Record record, String fileName) {
 		ArrayList<User> users = getUsersFromFlie(fileName);
 		for(User u : users){
 			if(u.getName().equals(user.getName())){
-				u.addRecord(record);
+				boolean hasRecord = false;
+				for(Record r : user.getRecords()){
+					if(r.getUrl().equals(record.getUrl())) hasRecord =true;
+				}
+				if(!hasRecord) u.addRecord(record);
 			}
 		}
 		createUsersFile(users, fileName);

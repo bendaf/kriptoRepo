@@ -1,4 +1,4 @@
-package hu.kripto.hf;
+package hu.kripto.hf.functions;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;

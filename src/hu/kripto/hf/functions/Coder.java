@@ -1,4 +1,4 @@
-package hu.kripto.hf;
+package hu.kripto.hf.functions;
 
 import java.io.UnsupportedEncodingException;
 import java.security.InvalidAlgorithmParameterException;
@@ -13,6 +13,8 @@ import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
+
+import org.apache.commons.codec.binary.Base64;
 
 public class Coder {
 
@@ -62,4 +64,13 @@ public class Coder {
 		return iv;
 	}
 
+	public static String base64Encode(String token) {
+		byte[] encodedBytes = Base64.encodeBase64(token.getBytes());
+		return  new String(encodedBytes);
+	}
+	
+	public static String base64Decode(String token) {
+		byte[] decodedBytes = Base64.decodeBase64(token.getBytes());
+		return new String(decodedBytes);
+	}
 }

@@ -1,4 +1,4 @@
-package hu.kripto.hf;
+package hu.kripto.hf.database;
 
 import java.util.ArrayList;
 import java.util.Collection;

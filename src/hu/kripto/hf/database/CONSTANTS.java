@@ -1,4 +1,4 @@
-package hu.kripto.hf;
+package hu.kripto.hf.database;
 
 public class CONSTANTS {
 	public static Integer[] MOD_NUMS = {8, 768, 1024, 1536, 2048, 3072,

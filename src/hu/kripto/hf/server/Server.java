@@ -1,4 +1,10 @@
-package hu.kripto.hf;
+package hu.kripto.hf.server;
+
+import hu.kripto.hf.UserAuthFaildException;
+import hu.kripto.hf.database.User;
+import hu.kripto.hf.database.XmlHelper;
+import hu.kripto.hf.functions.DifHelm;
+import hu.kripto.hf.functions.Network;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -53,31 +59,37 @@ public class Server implements Runnable {
 	}
 
 	public void run() {
-		User myUser = new User("ASDF","adfkvjaovj");
-		myUser.addRecord(new Record("valami.hu","DKDKDKLDLK","DKJHVUBDU"));
-		myUser.addRecord(new Record("a", "sdadf", "agffd"));
 		try {
-			clientSocket = serverSocket.accept(); 
-
-			clientInput = new DataInputStream(clientSocket.getInputStream());
-			clientOutput = new DataOutputStream(clientSocket.getOutputStream());
-
-			keyExchange();
-			
-			try{
-				User currentUser = authUser();
-				if(checkUser(currentUser)){
-					sendRecords(currentUser);
-					System.out.println("User azonosítva");
-				}else {
-					XmlHelper.addUserToFile(currentUser,usersXml);
-					System.out.println("User hozzáadva");
-				}
-				getRecords(currentUser);
-			}catch(UserAuthFaildException e){
-				e.printStackTrace();
+			while(!Thread.currentThread().isInterrupted()){
+				clientSocket = serverSocket.accept(); 
+				(new Thread(new Runnable(){
+					
+					@Override
+					public void run() {
+	
+						try {
+							clientInput = new DataInputStream(clientSocket.getInputStream());
+							clientOutput = new DataOutputStream(clientSocket.getOutputStream());
+							keyExchange();
+							try{
+								User currentUser = authUser();
+								if(checkUser(currentUser)){
+									System.out.println("User azonosítva" );
+								}else {
+									System.out.println("User hozzáadva");
+									XmlHelper.addUserToFile(currentUser,usersXml);
+								}
+								sendRecords(currentUser);
+								getRecords(currentUser);
+							}catch(UserAuthFaildException e){
+								e.printStackTrace();
+							}
+						} catch (IOException e1) {
+							e1.printStackTrace();
+						}
+					}
+				})).start();
 			}
-			
 			serverSocket.close();
 		} catch (EOFException e){
 			e.printStackTrace();
@@ -172,8 +184,10 @@ public class Server implements Runnable {
 		}
 
 	private User authUser() {
+		
 		String authXml = Network.getXml(clientInput,dh.getValue(DifHelm.DH_KEY).toByteArray());
 		return XmlHelper.getAuthFromXml(authXml);
+		
 	}
 
 	private void sendRecords(User currentUser) {
@@ -182,24 +196,27 @@ public class Server implements Runnable {
 	}
 
 	private void getRecords(User currentUser) {
-		while(!Thread.currentThread().isInterrupted()){
+		boolean isAlive = true;
+		while(isAlive){
+//			System.out.println("VEGTELEN");
 			String recordXml = Network.getXml(clientInput,dh.getValue(DifHelm.DH_KEY).toByteArray());
-			XmlHelper.addRecordToFile(currentUser,XmlHelper.getRecordFromXml(recordXml),usersXml);
+			if(recordXml == null)isAlive = false;
+			else XmlHelper.addRecordToFile(currentUser,XmlHelper.getRecordFromXml(recordXml),usersXml);
 		}
 		
 	}
 
 	/**
-	 * @param idUser
+	 * @param currentUser
 	 * @return
 	 * @throws UserAuthFaildException
 	 */
-	private boolean checkUser(User idUser) throws UserAuthFaildException{
+	private boolean checkUser(User currentUser) throws UserAuthFaildException{
 		ArrayList<User> users = XmlHelper.getUsersFromFlie(usersXml);
 		for(User u : users){
-			if(u.getName().equals(idUser.getName())){
-				if(u.getVerifier().equals(idUser.getVerifier())){
-					idUser = u;
+			if(u.getName().equals(currentUser.getName())){
+				if(u.getVerifier().equals(currentUser.getVerifier())){
+					currentUser.addRecords(u.getRecords());
 					return true;
 				}else{
 					throw new UserAuthFaildException();

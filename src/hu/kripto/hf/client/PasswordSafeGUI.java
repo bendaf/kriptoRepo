@@ -1,9 +1,14 @@
-package hu.kripto.hf.gui;
+package hu.kripto.hf.client;
+
+import hu.kripto.hf.UserAuthFaildException;
+import hu.kripto.hf.database.Record;
 
 import java.awt.EventQueue;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.io.IOException;
 
+import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -23,7 +28,14 @@ public class PasswordSafeGUI extends JFrame {
 	private JTextField addURLTextField;
 	private JTextField addUsernameTextField;
 	private JPasswordField addPasswordTextField;
+	
+	private Client c;
 
+	public JPanel MainPage;
+
+	private JList<String> list;
+
+	public DefaultListModel<String> listmodel;
 	/**
 	 * Launch the application.
 	 */
@@ -53,7 +65,7 @@ public class PasswordSafeGUI extends JFrame {
 		setContentPane(contentPane);
 		contentPane.setLayout(null);
 		
-		JPanel MainPage = new JPanel();
+		MainPage = new JPanel();
 		MainPage.setBounds(0, 0, 450, 278);
 		contentPane.add(MainPage);
 		MainPage.setLayout(null);
@@ -77,8 +89,9 @@ public class PasswordSafeGUI extends JFrame {
 		btnAdd.setBounds(97, 186, 75, 29);
 		MainPage.add(btnAdd);
 		
-		JList list = new JList();
-		list.setBounds(54, 33, 166, 141);
+		listmodel = new DefaultListModel<>();
+		list = new JList<>(listmodel);
+		list.setBounds(54, 33, 450, 141);
 		MainPage.add(list);
 		MainPage.setVisible(false);
 		
@@ -170,9 +183,33 @@ public class PasswordSafeGUI extends JFrame {
 		btnSignIn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				
-				sip.setVisible(false);
-				ap.setVisible(false);
-				mp.setVisible(true);
+			
+				final String username = usernameField.getText();
+				final String password = new String(passwordField.getPassword());
+				(new Thread(new Runnable() {
+					@Override
+					public void run() {
+						boolean succes = false;
+						while(!succes){
+							succes = true;
+							try {
+								c = new Client(PasswordSafeGUI.this);
+								c.sendAuth(username, password);
+							} catch (UserAuthFaildException | IOException e) {
+								succes = false;
+							}
+						}
+						EventQueue.invokeLater(new Runnable() {
+							@Override
+							public void run() {
+								sip.setVisible(false);
+								ap.setVisible(false);
+								mp.setVisible(true);
+							}
+						});
+						
+					}
+				})).start();
 			}
 		});
 		
@@ -188,10 +225,37 @@ public class PasswordSafeGUI extends JFrame {
 		// When the user wants to add a new record on MainPage
 		btnAdd.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
-				// SignInPage.setVisible(false);
 				ap.setVisible(true);
 				mp.setVisible(false);
+				addURLTextField.setText("");
+				addUsernameTextField.setText("");
+				addPasswordTextField.setText("");
+			}
+		});
+		btnAddNewRecord.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				final String url = addURLTextField.getText();
+				final String name= addUsernameTextField.getText();
+				final String pass= new String(addPasswordTextField.getPassword());
+				(new Thread(new Runnable() {
+					
+					@Override
+					public void run() {
+						c.addRecord(new Record(url, name, pass));
+						EventQueue.invokeLater(new Runnable() {
+							
+							@Override
+							public void run() {
+								
+								listmodel.addElement(url + "   " + name +"   " + pass);
+								ap.setVisible(false);
+								mp.setVisible(true);
+							}
+						});
+					}
+				})).start();
 			}
 		});
 	}
+	
 }
