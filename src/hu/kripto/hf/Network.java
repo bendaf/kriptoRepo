@@ -27,8 +27,7 @@ public class Network {
 
 	public static String getXml(DataInputStream input, byte[] key) {
 		try {
-			int a;
-			System.out.println(a = input.readInt());
+			int a = input.readInt();
 			byte[] b = new byte[a-16];
 			byte[] iv = new byte[16];
 			input.read(iv);

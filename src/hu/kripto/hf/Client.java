@@ -33,12 +33,14 @@ import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import org.apache.commons.codec.binary.Base64;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
+
 
 public class Client implements Runnable {
 	protected Socket clientSocket;
@@ -60,7 +62,7 @@ public class Client implements Runnable {
 	public static void main(String[] args) {
 		try {
 			new Client().run();
-		} catch (IOException e) { // Az UnknownHostException az IOException leszarmazottja. Mivel most egyikre se tudnank ertelmes hibakezelest csinalni, egyszerre lekezeljuk mindkettot.
+		} catch (IOException e) { 
 			e.printStackTrace();
 		}
 	}
@@ -213,10 +215,21 @@ public class Client implements Runnable {
 
 	private void sendUserData(String username, String verifier) {
 		
-		Network.send(serverOutput,XmlHelper.createAuthXml(username,verifier),
+		Network.send(serverOutput,XmlHelper.createAuthXml(base64Encode(username),base64Encode(verifier)),
 							dh.getValue(DifHelm.DH_KEY).toByteArray());
 	}
 	
+	public static String base64Encode(String token) {
+		byte[] encodedBytes = Base64.encodeBase64(token.getBytes());
+		return  new String(encodedBytes);
+	}
+	
+	public static String base64Decode(String token) {
+		byte[] decodedBytes = Base64.decodeBase64(token.getBytes());
+		return new String(decodedBytes);
+	}
+	
+
 	// Csatlakozunk a sajat gepunkon futo szerverhez. A sajat gepunk hostneve localhost, ip cime 127.0.0.1.
 	private byte[] firstStep(){
 		try{

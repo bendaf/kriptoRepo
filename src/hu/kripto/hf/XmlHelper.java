@@ -92,11 +92,12 @@ public class XmlHelper {
 
 	public static void addUserToFile(User idUser, String fileName) {
 		ArrayList<User> users = getUsersFromFlie(fileName);
+		//ArrayList<User> users = new ArrayList<User>();
 		users.add(idUser);
 		createUsersFile(users,fileName);
 	}
 
-	private static void createUsersFile(ArrayList<User> users,String fileName) {
+	private static void createUsersFile(ArrayList<User> users, String fileName) {
 		DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
 		DocumentBuilder docBuilder;
 		try {
@@ -107,7 +108,7 @@ public class XmlHelper {
 			doc.appendChild(rootElement);
 			for(User myUser : users){
 				Element userElement = doc.createElement(USER);
-				rootElement.appendChild(rootElement);
+				userElement.appendChild(rootElement);
 				userElement.setAttribute(NAME, myUser.getName());
 				userElement.setAttribute(VERIFIER, myUser.getVerifier());
 				

@@ -38,7 +38,7 @@ public class Server implements Runnable {
 	DataOutputStream clientOutput;
 	private DifHelm dh;
 	private BigInteger clientPK;
-	private String usersXml = "aaa.xml";
+	private String usersXml = "example1.xml";
 
 	public Server() throws IOException {
 		serverSocket = new ServerSocket(PORT_NUMBER);
