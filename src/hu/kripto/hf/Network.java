@@ -11,11 +11,13 @@ public class Network {
 		byte[] messageBytes = Coder.encode(message,key,iv);
 		byte[] c = new byte[iv.length + messageBytes.length];
 		System.arraycopy(iv, 0, c, 0, iv.length);
-		System.arraycopy(message, 0, c, iv.length, messageBytes.length);
+		System.arraycopy(messageBytes, 0, c, iv.length, messageBytes.length);
 		
 		try {
+			System.out.println(iv.length);
 			output.writeInt(c.length);
 			output.write(c);
+			output.flush();
 			System.out.println(c.length + " hosszú üzenet elküldve");
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -25,8 +27,10 @@ public class Network {
 
 	public static String getXml(DataInputStream input, byte[] key) {
 		try {
-			byte[] b = new byte[input.readInt()-128];
-			byte[] iv = new byte[128];
+			int a;
+			System.out.println(a = input.readInt());
+			byte[] b = new byte[a-16];
+			byte[] iv = new byte[16];
 			input.read(iv);
 			input.read(b);
 			System.out.println((iv.length+b.length) + " hosszú üzenet fogadva");

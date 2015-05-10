@@ -1,18 +1,17 @@
 package hu.kripto.hf;
 
 
-import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.IOException; 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException; 
+import java.net.UnknownHostException;
 import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -48,6 +47,7 @@ public class Client implements Runnable {
 	private DataOutputStream serverOutput;
 	private DataInputStream serverInput;
 	private byte[] masterKey;
+	private String username;
 	
 	public Client() throws UnknownHostException, IOException {
 		clientSocket = new Socket(InetAddress.getLocalHost(), Server.PORT_NUMBER);
@@ -71,6 +71,13 @@ public class Client implements Runnable {
 			serverOutput = new DataOutputStream(clientSocket.getOutputStream());
 			keyExchange();
 			
+			try {
+				sendAuth("AAA", "BBB");
+				addRecord(new Record("dad.da", "dasfsdf", "dadfadf","dadfadf"));
+			} catch (UserAuthFaildException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 			clientSocket.close();
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -90,7 +97,7 @@ public class Client implements Runnable {
 		System.out.println("beolvasok " + b.length + " hoszú bájtot");
 		
 		try {
-			Document d = XmlHelper.obtenerDocumentDeByte(b);
+			Document d = XmlHelper.bytes2Doc(b);
 			d.getDocumentElement().normalize();
 			
 			NodeList nList = d.getElementsByTagName("dh");
@@ -132,6 +139,7 @@ public class Client implements Runnable {
 
 	private void sendAuth(String username, String password) throws UserAuthFaildException{
 		masterKey = sha1(password);
+		this.username = username;
 		byte[] verifier = sha1(masterKey);
 		try {
 			sendUserData(username,new String(verifier,"UTF-8"));
@@ -162,7 +170,8 @@ public class Client implements Runnable {
 	}
 
 	private void sendRecrodData(Record r) {
-		Network.send(serverOutput,XmlHelper.createRecordXml(r),
+		System.out.println(dh.getValue(DifHelm.DH_KEY).toString());
+		Network.send(serverOutput,XmlHelper.createRecordXml(username,r),
 					dh.getValue(DifHelm.DH_KEY).toByteArray());
 		
 	}
@@ -203,6 +212,7 @@ public class Client implements Runnable {
 	}
 
 	private void sendUserData(String username, String verifier) {
+		
 		Network.send(serverOutput,XmlHelper.createAuthXml(username,verifier),
 							dh.getValue(DifHelm.DH_KEY).toByteArray());
 	}

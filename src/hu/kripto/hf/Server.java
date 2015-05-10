@@ -56,8 +56,6 @@ public class Server implements Runnable {
 		User myUser = new User("ASDF","adfkvjaovj");
 		myUser.addRecord(new Record("valami.hu","DKDKDKLDLK","DKJHVUBDU"));
 		myUser.addRecord(new Record("a", "sdadf", "agffd"));
-//		byte[] array = UsertoBytes.getBytes(myUser);
-//		System.out.println(Integer.toString(array.length));
 		try {
 			clientSocket = serverSocket.accept(); 
 
@@ -98,7 +96,7 @@ public class Server implements Runnable {
 				
 				int modulusSize=0;
 				try {
-					Document d = XmlHelper.obtenerDocumentDeByte(b);
+					Document d = XmlHelper.bytes2Doc(b);
 					d.getDocumentElement().normalize();
 					
 					NodeList nList = d.getElementsByTagName("dh");
@@ -116,7 +114,6 @@ public class Server implements Runnable {
 								step = Integer.parseInt(eElement.getTextContent());
 							}else if (eElement.getNodeName().equals("modulus")) {
 								modulusSize = Integer.parseInt(eElement.getTextContent());
-	//							System.out.println(Integer.toString(modulusSize));
 							}
 						}
 					}
@@ -141,7 +138,7 @@ public class Server implements Runnable {
 				clientInput.read(b2);
 				System.out.println("beolvasok " + b.length + " hoszú bájtot");
 				try {
-					Document d = XmlHelper.obtenerDocumentDeByte(b2);
+					Document d = XmlHelper.bytes2Doc(b2);
 					d.getDocumentElement().normalize();
 					
 					NodeList nList = d.getElementsByTagName("dh");
@@ -157,7 +154,6 @@ public class Server implements Runnable {
 							Element eElement = (Element) node;
 							if(eElement.getNodeName().equals("step")){
 								step = Integer.parseInt(eElement.getTextContent());
-	//							System.out.println(Integer.toString(step));
 							}else if (eElement.getNodeName().equals("myresult") || eElement.getNodeName().equals("myresult")) {
 								clientPK = new BigInteger(eElement.getTextContent(),16);
 							}
@@ -170,8 +166,6 @@ public class Server implements Runnable {
 				} catch (ParserConfigurationException | SAXException e) {
 					e.printStackTrace();
 				}
-				clientSocket.close();
-			
 			
 		}
 
@@ -188,7 +182,7 @@ public class Server implements Runnable {
 	private void getRecords(User currentUser) {
 		while(!Thread.currentThread().isInterrupted()){
 			String recordXml = Network.getXml(clientInput,dh.getValue(DifHelm.DH_KEY).toByteArray());
-			XmlHelper.addRecordToFile(currentUser,XmlHelper.getRecordFromXml(recordXml));
+			XmlHelper.addRecordToFile(currentUser,XmlHelper.getRecordFromXml(recordXml),usersXml);
 		}
 		
 	}
@@ -238,8 +232,6 @@ public class Server implements Runnable {
 			DOMSource source = new DOMSource(doc);
 			StreamResult result = new StreamResult(new File("outexample.xml"));
 	
-			// Output to console for testing
-			// StreamResult result = new StreamResult(System.out);
 	
 			transformer.transform(source, result);
 		} catch (DOMException e) {

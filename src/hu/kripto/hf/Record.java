@@ -12,6 +12,10 @@ public class Record {
 		this.usernameHash = usernameHash;
 		this.passwordHash = passwordHash;
 	}
+	public Record(String url, String username, String password, String salt) {
+		this(url,username,password);
+		this.recordSalt = salt;
+	}
 	public String getUrl() {
 		return url;
 	}

@@ -55,7 +55,6 @@ public class DifHelm {
     
 	public DifHelm(BigInteger generator, Integer modulusSize) {
 		gen = generator;
-		System.out.println(modulusSize.toString());
         mod = modulos.get(modulusSize);
 	}
 	
@@ -88,13 +87,10 @@ public class DifHelm {
 		if (modulus.signum() < 1 ) {
 			throw new ArithmeticException("non-positive modulo");
 		}
-//		System.out.println(base + " " + exponent + " " + modulus);
 		  BigInteger result = BigInteger.ONE;
 		  while (exponent.signum() > 0) {
-//			  System.out.println("base: " + base + ", result: " + result + ", exponent: " + exponent + ", testbit: " + exponent.testBit(0));
 		    if (exponent.testBit(0)) {
 		    	result = result.multiply(base).mod(modulus);
-//		    	System.out.println("result: " + result);
 		    }
 		    base = base.multiply(base).mod(modulus);
 		    exponent = exponent.shiftRight(1);
@@ -112,6 +108,8 @@ public class DifHelm {
                     return priv;
             case DH_PUB:
                     return pub;
+            case DH_KEY:
+            		return key;
             default:
                     return new BigInteger("0");
         }
