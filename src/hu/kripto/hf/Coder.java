@@ -56,8 +56,10 @@ public class Coder {
 	}
 
 	public static byte[] generateIV() {
-		// TODO Auto-generated method stub
-		return null;
+		byte[] iv = new byte[16];
+		Random rand = new Random();
+		rand.nextBytes(iv);
+		return iv;
 	}
 
 }
