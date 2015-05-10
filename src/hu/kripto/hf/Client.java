@@ -7,12 +7,12 @@ import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.IOException; // Ha a kommunikacioban valami balul sul el
+import java.io.IOException; 
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.Socket;
-import java.net.UnknownHostException; // Ha rossz cimre probalunk csatlakozni
+import java.net.UnknownHostException; 
 import java.nio.charset.Charset;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -57,6 +57,14 @@ public class Client implements Runnable {
 		clientSocket.close();
 	}
 	
+	public static void main(String[] args) {
+		try {
+			new Client().run();
+		} catch (IOException e) { // Az UnknownHostException az IOException leszarmazottja. Mivel most egyikre se tudnank ertelmes hibakezelest csinalni, egyszerre lekezeljuk mindkettot.
+			e.printStackTrace();
+		}
+	}
+
 	public void run() {
 		try {
 			serverInput = new DataInputStream(clientSocket.getInputStream());
@@ -69,112 +77,8 @@ public class Client implements Runnable {
 		}
 	}
 
-	private void addRecord(Record r) {
-		try {
-			r.setRecordSalt(new String(Coder.generateIV(),"UTF-8"));
-			byte[] recordKey = pbkdf2(masterKey, r.getRecordSalt().getBytes(Charset.forName("UTF-8")));
-			byte[] usernameKey = pbkdf2(recordKey, new String("USER_ID").getBytes(Charset.forName("UTF-8")));
-			byte[] passwordKey = pbkdf2(recordKey, new String("PASSWORD").getBytes(Charset.forName("UTF-8")));
-			r.cifher(usernameKey,passwordKey);
-			sendRecrodData(r);
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-	}
-
-	private void sendRecrodData(Record r) {
-		byte[] iv = Coder.generateIV();
-		byte[] recordXmlBytes = Coder.encode(createRecordXml(r),
-				dh.getValue(DifHelm.DH_KEY).toByteArray(),iv);
-		Network.send(serverOutput,iv,recordXmlBytes);
-		
-	}
-
-	/**
-	 * @param r
-	 * @return
-	 */
-	/**
-	 * @param r
-	 * @return
-	 */
-	private String createRecordXml(Record r) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	private byte[] pbkdf2(byte[] masterKey2, byte[] salt) {
-		
-		try {
-			SecretKeyFactory kf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-			return kf.generateSecret(new PBEKeySpec(bytes2Char(masterKey2),salt,42)).getEncoded();
-		} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
-			e.printStackTrace();
-		}
-		
-		return null;
-	}
-
-	private char[] bytes2Char(byte[] byteArray) {
-		char[] charArray = new char[byteArray.length];
-		for (int i = 0; i < byteArray.length; i++) {
-			charArray[i] = (char)(byteArray[i] & 0xFF);
-		}
-		return charArray;
-	}
-
-	private void getRecords() {
-		String recordsXml = Network.getXml(serverInput);
-		ArrayList<Record> records =  getRecords(recordsXml);
-		//EventQueue.invokeLater(new RefreshRecordsList());
-	}
-
-	private ArrayList<Record> getRecords(String recordsXml) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	private void sendAuth(String username, String password) throws UserAuthFaildException{
-		masterKey = sha1(password);
-		byte[] verifier = sha1(masterKey);
-		try {
-			sendUserData(username,new String(verifier,"UTF-8"));
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
-		
-		getRecords();
-	}
-
-	private byte[] sha1(byte[] byteArray) {
-		MessageDigest md = null;
-	    try {
-	        md = MessageDigest.getInstance("SHA-1");
-	    }
-	    catch(NoSuchAlgorithmException e) {
-	        e.printStackTrace();
-	    } 
-	    return md.digest(byteArray);
-	}
-
-	private void sendUserData(String username, String verifier) {
-		byte[] iv = Coder.generateIV();
-		byte[] authXmlBytes = Coder.encode(createAuthXml(username,verifier),
-				dh.getValue(DifHelm.DH_KEY).toByteArray(),iv);
-		Network.send(serverOutput,iv,authXmlBytes);
-	}
-
-	private String createAuthXml(String username, String verifier) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-	
-	private byte[] sha1(String masterKey) { // 160 bites kimenet!
-		return sha1(Arrays.copyOf(masterKey.getBytes(Charset.forName("UTF-8")), 16));
-	}
-
 	private void keyExchange() throws IOException{
-
+	
 		byte[] firstStep = firstStep();
 		serverOutput.writeInt(firstStep.length);
 		serverOutput.write(firstStep);
@@ -186,7 +90,7 @@ public class Client implements Runnable {
 		System.out.println("beolvasok " + b.length + " hoszú bájtot");
 		
 		try {
-			Document d = obtenerDocumentDeByte(b);
+			Document d = XmlHelper.obtenerDocumentDeByte(b);
 			d.getDocumentElement().normalize();
 			
 			NodeList nList = d.getElementsByTagName("dh");
@@ -226,68 +130,81 @@ public class Client implements Runnable {
 		
 	}
 
-	private byte[] thirdStep(String hexString) {
-		try{
-			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-			DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-	
-			// root elements
-			Document doc = docBuilder.newDocument();
-			Element rootElement = doc.createElement("dh");
-			doc.appendChild(rootElement);
-			
-			Element record = doc.createElement("step");
-			record.setTextContent("3");
-			rootElement.appendChild(record);
-			
-			Element modulus = doc.createElement("myresult");
-			modulus.setTextContent(hexString);
-			rootElement.appendChild(modulus);
-			
-			// write the content into xml file
-			TransformerFactory transformerFactory = TransformerFactory.newInstance();
-			Transformer transformer = transformerFactory.newTransformer();
-			DOMSource source = new DOMSource(doc);
-			StreamResult result = new StreamResult(new File("outexample.xml"));
-	
-			// Output to console for testing
-			// StreamResult result = new StreamResult(System.out);
-	
-			transformer.transform(source, result);
-		} catch (DOMException e) {
-			e.printStackTrace();
-		} catch (TransformerConfigurationException e) {
-			e.printStackTrace();
-		} catch (ParserConfigurationException e) {
-			e.printStackTrace();
-		} catch (TransformerFactoryConfigurationError e) {
-			e.printStackTrace();
-		} catch (TransformerException e) {
-			e.printStackTrace();
-		}
-	
-		byte[] fileData = null;
+	private void sendAuth(String username, String password) throws UserAuthFaildException{
+		masterKey = sha1(password);
+		byte[] verifier = sha1(masterKey);
 		try {
-			File file = new File("outexample.xml");
-			fileData = new byte[(int) file.length()];
-			FileInputStream in = new FileInputStream(file);
-			in.read(fileData);
-			in.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
+			sendUserData(username,new String(verifier,"UTF-8"));
+		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}
 		
-		return fileData;
+		getRecords();
 	}
 
-	public static void main(String[] args) {
+	private void getRecords() {
+		String recordsXml = Network.getXml(serverInput, dh.getValue(DifHelm.DH_KEY).toByteArray());
+		ArrayList<Record> records =  XmlHelper.getRecordsFromXml(recordsXml);
+		//EventQueue.invokeLater(new RefreshRecordsList());
+	}
+
+	private void addRecord(Record r) {
 		try {
-			new Client().run();
-		} catch (IOException e) { // Az UnknownHostException az IOException leszarmazottja. Mivel most egyikre se tudnank ertelmes hibakezelest csinalni, egyszerre lekezeljuk mindkettot.
+			r.setRecordSalt(new String(Coder.generateIV(),"UTF-8"));
+			byte[] recordKey = pbkdf2(masterKey, r.getRecordSalt().getBytes(Charset.forName("UTF-8")));
+			byte[] usernameKey = pbkdf2(recordKey, new String("USER_ID").getBytes(Charset.forName("UTF-8")));
+			byte[] passwordKey = pbkdf2(recordKey, new String("PASSWORD").getBytes(Charset.forName("UTF-8")));
+			r.cifher(usernameKey,passwordKey);
+			sendRecrodData(r);
+		} catch (UnsupportedEncodingException e) {
 			e.printStackTrace();
 		}
+	}
+
+	private void sendRecrodData(Record r) {
+		Network.send(serverOutput,XmlHelper.createRecordXml(r),
+					dh.getValue(DifHelm.DH_KEY).toByteArray());
+		
+	}
+
+	private byte[] pbkdf2(byte[] masterKey2, byte[] salt) {
+		
+		try {
+			SecretKeyFactory kf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+			return kf.generateSecret(new PBEKeySpec(bytes2Char(masterKey2),salt,42)).getEncoded();
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+
+	private char[] bytes2Char(byte[] byteArray) {
+		char[] charArray = new char[byteArray.length];
+		for (int i = 0; i < byteArray.length; i++) {
+			charArray[i] = (char)(byteArray[i] & 0xFF);
+		}
+		return charArray;
+	}
+
+	private byte[] sha1(byte[] byteArray) {
+		MessageDigest md = null;
+	    try {
+	        md = MessageDigest.getInstance("SHA-1");
+	    }
+	    catch(NoSuchAlgorithmException e) {
+	        e.printStackTrace();
+	    } 
+	    return md.digest(byteArray);
+	}
+
+	private byte[] sha1(String masterKey) { // 160 bites kimenet!
+		return sha1(Arrays.copyOf(masterKey.getBytes(Charset.forName("UTF-8")), 20));
+	}
+
+	private void sendUserData(String username, String verifier) {
+		Network.send(serverOutput,XmlHelper.createAuthXml(username,verifier),
+							dh.getValue(DifHelm.DH_KEY).toByteArray());
 	}
 	
 	// Csatlakozunk a sajat gepunkon futo szerverhez. A sajat gepunk hostneve localhost, ip cime 127.0.0.1.
@@ -347,11 +264,60 @@ public class Client implements Runnable {
 		return fileData;
 	}
 
-	private Document obtenerDocumentDeByte(byte[] documentoXml) throws ParserConfigurationException, SAXException, IOException  {
-	    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-	    factory.setNamespaceAware(true);
-	    DocumentBuilder builder = factory.newDocumentBuilder();
-	    return builder.parse(new ByteArrayInputStream(documentoXml));
+	private byte[] thirdStep(String hexString) {
+		try{
+			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
+			DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
+	
+			// root elements
+			Document doc = docBuilder.newDocument();
+			Element rootElement = doc.createElement("dh");
+			doc.appendChild(rootElement);
+			
+			Element record = doc.createElement("step");
+			record.setTextContent("3");
+			rootElement.appendChild(record);
+			
+			Element modulus = doc.createElement("myresult");
+			modulus.setTextContent(hexString);
+			rootElement.appendChild(modulus);
+			
+			// write the content into xml file
+			TransformerFactory transformerFactory = TransformerFactory.newInstance();
+			Transformer transformer = transformerFactory.newTransformer();
+			DOMSource source = new DOMSource(doc);
+			StreamResult result = new StreamResult(new File("outexample.xml"));
+	
+			// Output to console for testing
+			// StreamResult result = new StreamResult(System.out);
+	
+			transformer.transform(source, result);
+		} catch (DOMException e) {
+			e.printStackTrace();
+		} catch (TransformerConfigurationException e) {
+			e.printStackTrace();
+		} catch (ParserConfigurationException e) {
+			e.printStackTrace();
+		} catch (TransformerFactoryConfigurationError e) {
+			e.printStackTrace();
+		} catch (TransformerException e) {
+			e.printStackTrace();
+		}
+	
+		byte[] fileData = null;
+		try {
+			File file = new File("outexample.xml");
+			fileData = new byte[(int) file.length()];
+			FileInputStream in = new FileInputStream(file);
+			in.read(fileData);
+			in.close();
+		} catch (FileNotFoundException e) {
+			e.printStackTrace();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+		
+		return fileData;
 	}
 	
 	private Integer chooseModulus() {

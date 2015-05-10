@@ -1,6 +1,5 @@
 package hu.kripto.hf;
 
-import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.EOFException;
@@ -34,18 +33,23 @@ import org.xml.sax.SAXException;
 public class Server implements Runnable {
 	public static final int PORT_NUMBER = 42424;
 	private Socket clientSocket;
-	// A szukseges IO cuccok
+	private ServerSocket serverSocket;
 	DataInputStream clientInput;
 	DataOutputStream clientOutput;
 	private DifHelm dh;
 	private BigInteger clientPK;
+	private String usersXml = "aaa.xml";
 
 	public Server() throws IOException {
 		serverSocket = new ServerSocket(PORT_NUMBER);
 	}
 
-	public void close() throws IOException {
-		serverSocket.close();
+	public static void main(String[] args) {
+		try {
+			new Server().run();
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
 	public void run() {
@@ -67,9 +71,9 @@ public class Server implements Runnable {
 				if(checkUser(currentUser)){
 					sendRecords(currentUser);
 				}else {
-					addUserToXml(currentUser);
+					XmlHelper.addUserToFile(currentUser,usersXml);
 				}
-				getRecords();
+				getRecords(currentUser);
 			}catch(UserAuthFaildException e){
 				e.printStackTrace();
 			}
@@ -82,38 +86,110 @@ public class Server implements Runnable {
 		}
 	}
 
-	private void getRecords() {
-		while(!Thread.currentThread().isInterrupted()){
-			String recordXml = Network.getXml(clientInput);
-			addRecordToXml(recordFromXml(recordXml));
+	public void close() throws IOException {
+		serverSocket.close();
+	}
+
+	private void keyExchange() throws IOException{
+			
+				byte[] b = new byte[clientInput.readInt()];
+				clientInput.read(b);
+				System.out.println("beolvasok " + b.length + " hoszú bájtot");
+				
+				int modulusSize=0;
+				try {
+					Document d = XmlHelper.obtenerDocumentDeByte(b);
+					d.getDocumentElement().normalize();
+					
+					NodeList nList = d.getElementsByTagName("dh");
+					Node nNode = nList.item(0);
+					NodeList ghChildren = nNode.getChildNodes();
+					int step = -1;
+					for (int temp = 0; temp < ghChildren.getLength(); temp++) {
+						 
+						Node node = ghChildren.item(temp);
+				 
+						if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+							node.getChildNodes();
+							Element eElement = (Element) node;
+							if(eElement.getNodeName().equals("step")){
+								step = Integer.parseInt(eElement.getTextContent());
+							}else if (eElement.getNodeName().equals("modulus")) {
+								modulusSize = Integer.parseInt(eElement.getTextContent());
+	//							System.out.println(Integer.toString(modulusSize));
+							}
+						}
+					}
+					if(step == 1){
+						try {
+							dh = new DifHelm(new BigInteger("2"), modulusSize);
+							byte[] secondStep = secondStep(dh.createInterKey().toString(16));
+							clientOutput.writeInt(secondStep.length);
+							clientOutput.write(secondStep);
+							clientOutput.flush();
+							System.out.println("kiírok " + secondStep.length + " hosszú bájtot");
+						} catch (Exception e) {
+							e.printStackTrace();
+						}
+					}
+					
+				} catch (ParserConfigurationException | SAXException e) {
+					e.printStackTrace();
+				}
+	
+				byte[] b2 = new byte[clientInput.readInt()];
+				clientInput.read(b2);
+				System.out.println("beolvasok " + b.length + " hoszú bájtot");
+				try {
+					Document d = XmlHelper.obtenerDocumentDeByte(b2);
+					d.getDocumentElement().normalize();
+					
+					NodeList nList = d.getElementsByTagName("dh");
+					Node nNode = nList.item(0);
+					NodeList ghChildren = nNode.getChildNodes();
+					int step = -1;
+					for (int temp = 0; temp < ghChildren.getLength(); temp++) {
+						 
+						Node node = ghChildren.item(temp);
+				 
+						if (nNode.getNodeType() == Node.ELEMENT_NODE) {
+							node.getChildNodes();
+							Element eElement = (Element) node;
+							if(eElement.getNodeName().equals("step")){
+								step = Integer.parseInt(eElement.getTextContent());
+	//							System.out.println(Integer.toString(step));
+							}else if (eElement.getNodeName().equals("myresult") || eElement.getNodeName().equals("myresult")) {
+								clientPK = new BigInteger(eElement.getTextContent(),16);
+							}
+						}
+					}
+					if(step == 3){
+						dh.createEncryptionKey(clientPK);
+					}
+					
+				} catch (ParserConfigurationException | SAXException e) {
+					e.printStackTrace();
+				}
+				clientSocket.close();
+			
+			
 		}
-		
-	}
 
-	private void addRecordToXml(Record recordFromXml) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	private Record recordFromXml(String recordXml) {
-		// TODO Auto-generated method stub
-		return null;
+	private User authUser() {
+		String authXml = Network.getXml(clientInput,dh.getValue(DifHelm.DH_KEY).toByteArray());
+		return XmlHelper.getAuthFromXml(authXml);
 	}
 
 	private void sendRecords(User currentUser) {
-		byte[] iv = Coder.generateIV();
-		byte[] recordXmlBytes = Coder.encode(createRecordXml(currentUser),
-				dh.getValue(DifHelm.DH_KEY).toByteArray(),iv);
-		Network.send(clientOutput,iv,recordXmlBytes);
+		Network.send(clientOutput,XmlHelper.createUserXml(currentUser),
+					dh.getValue(DifHelm.DH_KEY).toByteArray());
 	}
 
-	private String createRecordXml(User currentUser) {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	private void addUserToXml(User idUser) {
-		// TODO Auto-generated method stub
+	private void getRecords(User currentUser) {
+		while(!Thread.currentThread().isInterrupted()){
+			String recordXml = Network.getXml(clientInput,dh.getValue(DifHelm.DH_KEY).toByteArray());
+			XmlHelper.addRecordToFile(currentUser,XmlHelper.getRecordFromXml(recordXml));
+		}
 		
 	}
 
@@ -123,7 +199,7 @@ public class Server implements Runnable {
 	 * @throws UserAuthFaildException
 	 */
 	private boolean checkUser(User idUser) throws UserAuthFaildException{
-		ArrayList<User> users = getUsersFromXml();
+		ArrayList<User> users = XmlHelper.getUsersFromFlie(usersXml);
 		for(User u : users){
 			if(u.getName().equals(idUser.getName())){
 				if(u.getVerifier().equals(idUser.getVerifier())){
@@ -134,21 +210,6 @@ public class Server implements Runnable {
 			}
 		}
 		return false;
-	}
-
-	private ArrayList<User> getUsersFromXml() {
-		// TODO Auto-generated method stub
-		return null;
-	}
-
-	private User authUser() {
-		String userXml = Network.getXml(clientInput);
-		return xml2User(userXml);
-	}
-
-	private User xml2User(String userXml) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	private byte[] secondStep(String hexString) {
@@ -207,106 +268,4 @@ public class Server implements Runnable {
 		
 		return fileData;
 	}
-
-	public static void main(String[] args) {
-		try {
-			new Server().run();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-	}
-	
-	private void keyExchange() throws IOException{
-		
-			byte[] b = new byte[clientInput.readInt()];
-			clientInput.read(b);
-			System.out.println("beolvasok " + b.length + " hoszú bájtot");
-			
-			int modulusSize=0;
-			try {
-				Document d = obtenerDocumentDeByte(b);
-				d.getDocumentElement().normalize();
-				
-				NodeList nList = d.getElementsByTagName("dh");
-				Node nNode = nList.item(0);
-				NodeList ghChildren = nNode.getChildNodes();
-				int step = -1;
-				for (int temp = 0; temp < ghChildren.getLength(); temp++) {
-					 
-					Node node = ghChildren.item(temp);
-			 
-					if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-						node.getChildNodes();
-						Element eElement = (Element) node;
-						if(eElement.getNodeName().equals("step")){
-							step = Integer.parseInt(eElement.getTextContent());
-						}else if (eElement.getNodeName().equals("modulus")) {
-							modulusSize = Integer.parseInt(eElement.getTextContent());
-//							System.out.println(Integer.toString(modulusSize));
-						}
-					}
-				}
-				if(step == 1){
-					try {
-						dh = new DifHelm(new BigInteger("2"), modulusSize);
-						byte[] secondStep = secondStep(dh.createInterKey().toString(16));
-						clientOutput.writeInt(secondStep.length);
-						clientOutput.write(secondStep);
-						clientOutput.flush();
-						System.out.println("kiírok " + secondStep.length + " hosszú bájtot");
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-				
-			} catch (ParserConfigurationException | SAXException e) {
-				e.printStackTrace();
-			}
-
-			byte[] b2 = new byte[clientInput.readInt()];
-			clientInput.read(b2);
-			System.out.println("beolvasok " + b.length + " hoszú bájtot");
-			try {
-				Document d = obtenerDocumentDeByte(b2);
-				d.getDocumentElement().normalize();
-				
-				NodeList nList = d.getElementsByTagName("dh");
-				Node nNode = nList.item(0);
-				NodeList ghChildren = nNode.getChildNodes();
-				int step = -1;
-				for (int temp = 0; temp < ghChildren.getLength(); temp++) {
-					 
-					Node node = ghChildren.item(temp);
-			 
-					if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-						node.getChildNodes();
-						Element eElement = (Element) node;
-						if(eElement.getNodeName().equals("step")){
-							step = Integer.parseInt(eElement.getTextContent());
-//							System.out.println(Integer.toString(step));
-						}else if (eElement.getNodeName().equals("myresult") || eElement.getNodeName().equals("myresult")) {
-							clientPK = new BigInteger(eElement.getTextContent(),16);
-						}
-					}
-				}
-				if(step == 3){
-					dh.createEncryptionKey(clientPK);
-				}
-				
-			} catch (ParserConfigurationException | SAXException e) {
-				e.printStackTrace();
-			}
-			clientSocket.close();
-		
-		
-	}
-	
-	private Document obtenerDocumentDeByte(byte[] documentoXml) throws ParserConfigurationException, SAXException, IOException  {
-	    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-	    factory.setNamespaceAware(true);
-	    DocumentBuilder builder = factory.newDocumentBuilder();
-	    return builder.parse(new ByteArrayInputStream(documentoXml));
-	}
-
-	protected ServerSocket serverSocket;
 }
