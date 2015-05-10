@@ -203,6 +203,7 @@ public class Server implements Runnable {
 		for(User u : users){
 			if(u.getName().equals(idUser.getName())){
 				if(u.getVerifier().equals(idUser.getVerifier())){
+					idUser = u;
 					return true;
 				}else{
 					throw new UserAuthFaildException();

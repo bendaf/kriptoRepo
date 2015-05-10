@@ -12,17 +12,22 @@ import org.w3c.dom.Document;
 import org.xml.sax.SAXException;
 
 public class XmlHelper {
-	public static String createRecordXml(Record r) {
+	public static String createAuthXml(String username, String verifier) {
 		// TODO Auto-generated method stub
 		return null;
 	}
-	
-	public static Record getRecordFromXml(String recordXml){
-		// TODO
+
+	public static User getAuthFromXml(String userXml){
+		// TODO 
 		return null;
 	}
-	
-	public static ArrayList<Record> getRecordsFromXml(String recordsXml) {
+
+	public static void addUserToFile(User idUser, String usersXml) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	public static ArrayList<User> getUsersFromFlie(String filename) { // Recordokkal együtt
 		// TODO Auto-generated method stub
 		return null;
 	}
@@ -31,25 +36,20 @@ public class XmlHelper {
 		// TODO Auto-generated method stub
 		return null;
 	}
-	
-	public static User getAuthFromXml(String userXml){
-		// TODO 
-		return null;
-	}
 
-	public static String createAuthXml(String username, String verifier) {
+	public static ArrayList<Record> getRecordsFromXml(String recordsXml) { //User xml
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public static ArrayList<User> getUsersFromFlie(String filename) {
+	public static String createRecordXml(Record r) {
 		// TODO Auto-generated method stub
 		return null;
 	}
 
-	public static void addUserToFile(User idUser, String usersXml) {
-		// TODO Auto-generated method stub
-		
+	public static Record getRecordFromXml(String recordXml){
+		// TODO
+		return null;
 	}
 
 	public static void addRecordToFile(User user, Record recordFromXml) {
