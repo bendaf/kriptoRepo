@@ -163,13 +163,16 @@ public class PasswordSafeGUI extends JFrame {
 		
 		SignInPage.setVisible(true);
 		
+		final JPanel sip = SignInPage;
+		final JPanel ap = AddPage;
+		final JPanel mp = MainPage;
+		
 		btnSignIn.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				
-				
-				SignInPage.setVisible(false);
-				AddPage.setVisible(false);
-				MainPage.setVisible(true);
+				sip.setVisible(false);
+				ap.setVisible(false);
+				mp.setVisible(true);
 			}
 		});
 		
@@ -177,8 +180,8 @@ public class PasswordSafeGUI extends JFrame {
 		btnCancel.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				// SignInPage.setVisible(false);
-				AddPage.setVisible(false);
-				MainPage.setVisible(true);
+				ap.setVisible(false);
+				mp.setVisible(true);
 			}
 		});
 		
@@ -186,8 +189,8 @@ public class PasswordSafeGUI extends JFrame {
 		btnAdd.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
 				// SignInPage.setVisible(false);
-				AddPage.setVisible(true);
-				MainPage.setVisible(false);
+				ap.setVisible(true);
+				mp.setVisible(false);
 			}
 		});
 	}
