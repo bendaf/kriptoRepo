@@ -25,9 +25,9 @@ public class DifHelm {
     public static final int DH_PUB  = 4;
     public static final int DH_KEY  = 5;
 
-    private HashMap<Integer, BigInteger> modulos = new HashMap<Integer, BigInteger>();
+    private static HashMap<Integer, BigInteger> modulos = new HashMap<Integer, BigInteger>();
     
-    {
+    static{
 		try {
 			BufferedReader br = new BufferedReader(new FileReader("DHmods.txt"));
 			while (br.ready()) {
@@ -41,6 +41,7 @@ public class DifHelm {
 					} while (br.ready() && read.length() > 0); 
 				}
 				BigInteger modulus = new BigInteger(sb.toString().replace(" ",""),16);
+//				 System.out.println("modulus: "+modulus);
 				modulos.put(bitLen, modulus);
 			}
 			
@@ -56,10 +57,14 @@ public class DifHelm {
 	public DifHelm(BigInteger generator, Integer modulusSize) {
 		gen = generator;
         mod = modulos.get(modulusSize);
+//        System.out.println(modulusSize.toString());
+//        System.out.println(mod.toString());
 	}
 	
 	public BigInteger createInterKey() {
+//		System.out.println(mod.toString());
         priv = new BigInteger(mod.bitCount(),new Random());
+        // System.out.println(priv);
         return pub = DifHelm.modPow(gen, priv, mod);
 	}
 

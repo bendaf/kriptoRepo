@@ -273,6 +273,8 @@ public class XmlHelper {
 	    factory.setNamespaceAware(true);
 	    DocumentBuilder builder = factory.newDocumentBuilder();
 	    return builder.parse(new ByteArrayInputStream(bytes));
+//	    String s = new String (bytes);
+//	    return builder.parse(new InputSource(new StringReader(s)));
 	}
 	
 	public static byte[] doc2Bytes(Document d) throws TransformerException{

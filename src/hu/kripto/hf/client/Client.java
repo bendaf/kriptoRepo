@@ -4,7 +4,6 @@ package hu.kripto.hf.client;
 import hu.kripto.hf.UserAuthFaildException;
 import hu.kripto.hf.database.CONSTANTS;
 import hu.kripto.hf.database.Record;
-import hu.kripto.hf.database.User;
 import hu.kripto.hf.database.XmlHelper;
 import hu.kripto.hf.functions.Coder;
 import hu.kripto.hf.functions.DifHelm;
@@ -14,13 +13,9 @@ import hu.kripto.hf.server.Server;
 import java.awt.EventQueue;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigInteger;
-import java.net.InetAddress;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.charset.Charset;
@@ -36,13 +31,9 @@ import javax.crypto.spec.PBEKeySpec;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.TransformerFactoryConfigurationError;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
 
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
@@ -63,7 +54,7 @@ public class Client extends Thread {
 	private PasswordSafeGUI psfgui;
 	
 	public Client() throws UnknownHostException, IOException {
-		clientSocket = new Socket(InetAddress.getLocalHost(), Server.PORT_NUMBER);
+		clientSocket = new Socket("192.168.255.226", Server.PORT_NUMBER);
 		serverInput = new DataInputStream(clientSocket.getInputStream());
 		serverOutput = new DataOutputStream(clientSocket.getOutputStream());
 		keyExchange();
@@ -108,6 +99,7 @@ public class Client extends Thread {
 		
 		try {
 			Document d = XmlHelper.bytes2Doc(b);
+			System.out.println(XmlHelper.doc2String(d));
 			d.getDocumentElement().normalize();
 			
 			NodeList nList = d.getElementsByTagName("dh");
@@ -120,11 +112,10 @@ public class Client extends Thread {
 		 
 				if (nNode.getNodeType() == Node.ELEMENT_NODE) {
 					node.getChildNodes();
-					Element eElement = (Element) node;
-					if(eElement.getNodeName().equals("step")){
-						step = Integer.parseInt(eElement.getTextContent());
-					}else if (eElement.getNodeName().equals("myresult")) {
-						serverPK = new BigInteger(eElement.getTextContent(),16);
+					if(node.getNodeName().equals("step")){
+						step = Integer.parseInt(node.getTextContent());
+					}else if (node.getNodeName().equals("myresult")) {
+						serverPK = new BigInteger(node.getTextContent(),16);
 					}
 				}
 			}
@@ -143,6 +134,9 @@ public class Client extends Thread {
 			}
 		} catch (ParserConfigurationException | SAXException e) {
 			e.printStackTrace();
+		} catch (TransformerException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
 		}
 		
 	}
@@ -168,7 +162,7 @@ public class Client extends Thread {
 		ArrayList<Record> records =  XmlHelper.getRecordsFromXml(recordsXml);
 		for(Record r : records){
 			byte[] recordKey = pbkdf2(masterKey, r.getRecordSalt().getBytes(Charset.forName("UTF-8")));
-			byte[] usernameKey = pbkdf2(recordKey, new String("USER_ID").getBytes(Charset.forName("UTF-8")));
+			byte[] usernameKey = pbkdf2(recordKey, new String("USER__ID").getBytes(Charset.forName("UTF-8")));
 			byte[] passwordKey = pbkdf2(recordKey, new String("PASSWORD").getBytes(Charset.forName("UTF-8")));
 			r.deCipher(usernameKey,passwordKey);
 //			User u = new User("AAA","d");
@@ -194,7 +188,7 @@ public class Client extends Thread {
 		try {
 			r.setRecordSalt(new String(Coder.generateIV(),"UTF-8"));
 			byte[] recordKey = pbkdf2(masterKey, r.getRecordSalt().getBytes(Charset.forName("UTF-8")));
-			byte[] usernameKey = pbkdf2(recordKey, new String("USER_ID").getBytes(Charset.forName("UTF-8")));
+			byte[] usernameKey = pbkdf2(recordKey, new String("USER__ID").getBytes(Charset.forName("UTF-8")));
 			byte[] passwordKey = pbkdf2(recordKey, new String("PASSWORD").getBytes(Charset.forName("UTF-8")));
 			r.cipher(usernameKey,passwordKey);
 			sendRecrodData(r);
