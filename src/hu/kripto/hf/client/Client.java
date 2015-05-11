@@ -80,7 +80,7 @@ public class Client extends Thread {
 	
 	public static void main(String[] args) {
 		try {
-			new Client().run();
+			new Client();
 		} catch (IOException e) { 
 			e.printStackTrace();
 		}

@@ -268,11 +268,11 @@ public class XmlHelper {
 		
 	}
 	
-	public static Document bytes2Doc(byte[] documentoXml) throws ParserConfigurationException, SAXException, IOException  {
+	public static Document bytes2Doc(byte[] bytes) throws ParserConfigurationException, SAXException, IOException  {
 	    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 	    factory.setNamespaceAware(true);
 	    DocumentBuilder builder = factory.newDocumentBuilder();
-	    return builder.parse(new ByteArrayInputStream(documentoXml));
+	    return builder.parse(new ByteArrayInputStream(bytes));
 	}
 	
 	public static byte[] doc2Bytes(Document d) throws TransformerException{
