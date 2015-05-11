@@ -70,7 +70,7 @@ public class XmlHelper {
 		try {
 			Document d = string2Doc(userXml);
 			d.getDocumentElement().normalize();
-			NodeList nList = d.getElementsByTagName(USER);// TODO Nem kell ide egy users? 
+			NodeList nList = d.getElementsByTagName(USER); 
 			
 			for (int temp = 0; temp < nList.getLength(); temp++) {
 				 

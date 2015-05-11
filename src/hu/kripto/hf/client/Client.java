@@ -11,7 +11,6 @@ import hu.kripto.hf.functions.DifHelm;
 import hu.kripto.hf.functions.Network;
 import hu.kripto.hf.server.Server;
 
-import java.awt.Component;
 import java.awt.EventQueue;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -31,7 +30,6 @@ import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
-import java.util.Vector;
 
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
@@ -46,7 +44,6 @@ import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
-import org.apache.commons.codec.binary.Base64;
 import org.w3c.dom.DOMException;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -170,16 +167,15 @@ public class Client extends Thread {
 		String recordsXml = Network.getXml(serverInput, dh.getValue(DifHelm.DH_KEY).toByteArray());
 		ArrayList<Record> records =  XmlHelper.getRecordsFromXml(recordsXml);
 		for(Record r : records){
-//			System.out.println(r.getRecordSalt());
 			byte[] recordKey = pbkdf2(masterKey, r.getRecordSalt().getBytes(Charset.forName("UTF-8")));
 			byte[] usernameKey = pbkdf2(recordKey, new String("USER_ID").getBytes(Charset.forName("UTF-8")));
 			byte[] passwordKey = pbkdf2(recordKey, new String("PASSWORD").getBytes(Charset.forName("UTF-8")));
 			r.deCipher(usernameKey,passwordKey);
-			User u = new User("AAA","d");
-			u.addRecord(r);
-			System.out.println();
-			XmlHelper.createUserXml(u);
-			System.out.println();
+//			User u = new User("AAA","d");
+//			u.addRecord(r);
+//			System.out.println();
+//			XmlHelper.createUserXml(u);
+//			System.out.println();
 		}
 		final ArrayList<Record> rs = records;
 		EventQueue.invokeLater(new Runnable() {
@@ -196,7 +192,6 @@ public class Client extends Thread {
 	
 	public void addRecord(Record r) {
 		try {
-//			System.out.println(r.getUrl());
 			r.setRecordSalt(new String(Coder.generateIV(),"UTF-8"));
 			byte[] recordKey = pbkdf2(masterKey, r.getRecordSalt().getBytes(Charset.forName("UTF-8")));
 			byte[] usernameKey = pbkdf2(recordKey, new String("USER_ID").getBytes(Charset.forName("UTF-8")));
@@ -275,15 +270,7 @@ public class Client extends Thread {
 			rootElement.appendChild(modulus);
 			
 			// write the content into xml file
-			TransformerFactory transformerFactory = TransformerFactory.newInstance();
-			Transformer transformer = transformerFactory.newTransformer();
-			DOMSource source = new DOMSource(doc);
-			StreamResult result = new StreamResult(new File("outexample.xml"));
-	
-			// Output to console for testing
-			// StreamResult result = new StreamResult(System.out);
-	
-			transformer.transform(source, result);
+			return XmlHelper.doc2Bytes(doc);
 		} catch (DOMException e) {
 			e.printStackTrace();
 		} catch (TransformerConfigurationException e) {
@@ -296,19 +283,7 @@ public class Client extends Thread {
 			e.printStackTrace();
 		}
 	
-		byte[] fileData = null;
-		try {
-			File file = new File("outexample.xml");
-			fileData = new byte[(int) file.length()];
-			FileInputStream in = new FileInputStream(file);
-			in.read(fileData);
-			in.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
+		byte[] fileData = null;		
 		return fileData;
 	}
 
@@ -330,16 +305,7 @@ public class Client extends Thread {
 			modulus.setTextContent(hexString);
 			rootElement.appendChild(modulus);
 			
-			// write the content into xml file
-			TransformerFactory transformerFactory = TransformerFactory.newInstance();
-			Transformer transformer = transformerFactory.newTransformer();
-			DOMSource source = new DOMSource(doc);
-			StreamResult result = new StreamResult(new File("outexample.xml"));
-	
-			// Output to console for testing
-			// StreamResult result = new StreamResult(System.out);
-	
-			transformer.transform(source, result);
+			return XmlHelper.doc2Bytes(doc);
 		} catch (DOMException e) {
 			e.printStackTrace();
 		} catch (TransformerConfigurationException e) {
@@ -351,21 +317,7 @@ public class Client extends Thread {
 		} catch (TransformerException e) {
 			e.printStackTrace();
 		}
-	
-		byte[] fileData = null;
-		try {
-			File file = new File("outexample.xml");
-			fileData = new byte[(int) file.length()];
-			FileInputStream in = new FileInputStream(file);
-			in.read(fileData);
-			in.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		
-		return fileData;
+		return null;
 	}
 	
 	private Integer chooseModulus() {

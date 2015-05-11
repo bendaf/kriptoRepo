@@ -198,7 +198,6 @@ public class Server implements Runnable {
 	private void getRecords(User currentUser) {
 		boolean isAlive = true;
 		while(isAlive){
-//			System.out.println("VEGTELEN");
 			String recordXml = Network.getXml(clientInput,dh.getValue(DifHelm.DH_KEY).toByteArray());
 			if(recordXml == null)isAlive = false;
 			else XmlHelper.addRecordToFile(currentUser,XmlHelper.getRecordFromXml(recordXml),usersXml);
@@ -245,14 +244,7 @@ public class Server implements Runnable {
 			modulus.setTextContent(hexString);
 			rootElement.appendChild(modulus);
 			
-			// write the content into xml file
-			TransformerFactory transformerFactory = TransformerFactory.newInstance();
-			Transformer transformer = transformerFactory.newTransformer();
-			DOMSource source = new DOMSource(doc);
-			StreamResult result = new StreamResult(new File("outexample.xml"));
-	
-	
-			transformer.transform(source, result);
+			return XmlHelper.doc2Bytes(doc);
 		} catch (DOMException e) {
 			e.printStackTrace();
 		} catch (TransformerConfigurationException e) {
@@ -264,20 +256,7 @@ public class Server implements Runnable {
 		} catch (TransformerException e) {
 			e.printStackTrace();
 		}
-	
-		byte[] fileData = null;
-		try {
-			File file = new File("outexample.xml");
-			fileData = new byte[(int) file.length()];
-			FileInputStream in = new FileInputStream(file);
-			in.read(fileData);
-			in.close();
-		} catch (FileNotFoundException e) {
-			e.printStackTrace();
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
 		
-		return fileData;
+		return null;
 	}
 }
