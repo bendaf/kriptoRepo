@@ -69,6 +69,11 @@ public class Coder {
 		return  new String(encodedBytes);
 	}
 	
+	public static String base64Encode(byte[] token) {
+		byte[] encodedBytes = Base64.encodeBase64(token);
+		return  new String(encodedBytes);
+	}
+	
 	public static String base64Decode(String token) {
 		byte[] decodedBytes = Base64.decodeBase64(token.getBytes());
 		return new String(decodedBytes);

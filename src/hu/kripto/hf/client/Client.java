@@ -145,11 +145,11 @@ public class Client extends Thread {
 		masterKey = sha1(password);
 		this.username = username;
 		byte[] verifier = sha1(masterKey);
-		try {
-			sendUserData(username,new String(verifier,"UTF-8"));
-		} catch (UnsupportedEncodingException e) {
-			e.printStackTrace();
-		}
+//		try {
+			sendUserData(username,Coder.base64Encode(verifier));
+//		} catch (UnsupportedEncodingException e) {
+//			e.printStackTrace();
+//		}
 		try{
 		getRecords();
 		}catch(NullPointerException e){
@@ -240,8 +240,7 @@ public class Client extends Thread {
 	}
 
 	private void sendUserData(String username, String verifier) {
-		Network.send(serverOutput,XmlHelper.createAuthXml(Coder.base64Encode(username),
-							Coder.base64Encode(verifier)),dh.getValue(DifHelm.DH_KEY).toByteArray());
+		Network.send(serverOutput,XmlHelper.createAuthXml(username,verifier),dh.getValue(DifHelm.DH_KEY).toByteArray());
 	}
 	
 	// Csatlakozunk a sajat gepunkon futo szerverhez. A sajat gepunk hostneve localhost, ip cime 127.0.0.1.
